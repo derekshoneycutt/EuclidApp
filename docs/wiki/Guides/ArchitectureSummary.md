@@ -363,6 +363,14 @@ synchronization rules; no subsystem may treat the workers as interchangeable.
   CPU workers. Tasks must not call Julia or thread-affine raylib window, audio,
   or rendering APIs.
 
+Pool handles are generational, joined exactly once, and may receive cooperative
+cancellation requests before join. Cancellation never releases payload ownership or
+removes queued backend work: a task observes its token only at bounded checkpoints,
+and the submitting owner still joins before reusing payload or allocator storage.
+Cancellation requested before join is the authoritative terminal result. Deterministic
+fences rank failure above cancellation above success; mandatory simulation and frame
+preparation tasks are not cancelled.
+
 ### Julia Owner Thread
 
 The display and Julia threads communicate through bounded typed channels and
@@ -452,7 +460,12 @@ texture pages. Regular loads synchronously as the permanent fallback. Other weig
 and italic variants are requested on demand. Seed and page preparation are serialized
 through the shared taskpool using one reusable virtual arena and finalized on the
 display thread. Frame service polls without waiting and publishes only
-current-generation results.
+current-generation results. When a newer generation supersedes accepted work for the
+same font, the display owner requests cooperative cancellation and continues polling
+until the task is terminal. Preparation checks cancellation between allocation,
+metrics, packing, and glyph-rasterization work, clears partial result metadata, and
+retains arena ownership until the task is joined. Cancelled page work restores queued
+glyph demand for later preparation.
 
 The resident font's cmap defines Unicode support; Euclid no longer maintains a broad
 Unicode allowlist. Shaped text uses HarfBuzz output glyph IDs directly. Unshaped
@@ -530,10 +543,10 @@ to those fallback paths; successful MATH layout does not consume them. Font-page
 resolution separately records fallback demand in generation-local cache telemetry.
 
 Source changes are polled at a bounded cadence and debounced before replacement.
-Shutdown rejects new font requests, joins accepted preparation before destroying
-the taskpool, unloads seed and page textures while the graphics context is live,
-releases exact-size generation metadata, destroys HarfBuzz handles, and finally
-releases the preparation arena.
+Shutdown rejects new font requests, requests cancellation of accepted font work,
+joins that work before destroying the taskpool, unloads seed and page textures while
+the graphics context is live, releases exact-size generation metadata, destroys
+HarfBuzz handles, and finally releases the preparation arena.
 
 ### Lifecycle And Failure Rules
 

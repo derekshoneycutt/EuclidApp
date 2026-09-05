@@ -5,6 +5,7 @@ import "core:mem"
 import "core:os"
 import "core:sync"
 import "core:testing"
+import "core:thread"
 
 Task_Test_Payload :: struct {
     input : int,
@@ -21,7 +22,8 @@ Task_Test_Gate :: struct {
 }
 
 // Compute one isolated test result without touching pool or application state.
-task_test_execute :: proc(payload: rawptr) -> Task_Result {
+task_test_execute :: proc(
+    payload: rawptr, _: Task_Cancellation_Token) -> Task_Result {
     task := (^Task_Test_Payload)(payload)
     task.output = task.input * task.input
     task.executed = true
@@ -29,7 +31,8 @@ task_test_execute :: proc(payload: rawptr) -> Task_Result {
 }
 
 // Occupy one worker until the owner explicitly releases it.
-task_test_wait_at_gate :: proc(payload: rawptr) -> Task_Result {
+task_test_wait_at_gate :: proc(
+    payload: rawptr, _: Task_Cancellation_Token) -> Task_Result {
     gate := (^Task_Test_Gate)(payload)
     sync.mutex_lock(&gate.mutex)
     gate.worker_started = true
@@ -39,6 +42,17 @@ task_test_wait_at_gate :: proc(payload: rawptr) -> Task_Result {
     }
     sync.mutex_unlock(&gate.mutex)
     return .Succeeded
+}
+
+// Wait for cancellation and expose that cooperative observation to the owner.
+task_test_wait_for_cancellation :: proc(
+    payload: rawptr, token: Task_Cancellation_Token) -> Task_Result {
+    task := (^Task_Test_Payload)(payload)
+    for !task_cancellation_requested(token) {
+        thread.yield()
+    }
+    task.executed = true
+    return .Cancelled
 }
 
 // Wait until the sole worker has entered the blocking fixture.
@@ -279,6 +293,88 @@ task_pool_test_failure_is_visible :: proc(t: ^testing.T) {
     testing.expect_value(t, outcome, Task_Join_Outcome.Joined)
     _, second_outcome := task_pool_wait(&pool, handle)
     testing.expect_value(t, second_outcome, Task_Join_Outcome.Stale_Handle)
+}
+
+// Verify cancellation after worker completion wins until join consumes authority.
+@(test)
+task_pool_test_cancellation_wins_until_join :: proc(t: ^testing.T) {
+    pool: Task_Pool
+    testing.expect(t, task_pool_init(&pool, 1))
+    defer task_pool_destroy(&pool)
+    payload := Task_Test_Payload{input = 7}
+    handle, outcome := task_pool_submit(&pool, task_test_execute, &payload)
+    testing.expect_value(t, outcome, Task_Submit_Outcome.Queued)
+    for task_pool_poll(&pool, handle) == .Pending {
+        thread.yield()
+    }
+
+    testing.expect_value(t, task_pool_cancel(&pool, handle),
+        Task_Cancel_Outcome.Requested)
+    testing.expect_value(t, task_pool_cancel(&pool, handle),
+        Task_Cancel_Outcome.Already_Requested)
+    result, joined := task_pool_wait(&pool, handle)
+
+    testing.expect_value(t, result, Task_Result.Cancelled)
+    testing.expect_value(t, joined, Task_Join_Outcome.Joined)
+    testing.expect_value(t, payload.output, 49)
+    testing.expect_value(t, task_pool_cancel(&pool, handle),
+        Task_Cancel_Outcome.Stale_Handle)
+}
+
+// Verify a running task may observe cancellation without surrendering ownership early.
+@(test)
+task_pool_test_cooperative_cancellation :: proc(t: ^testing.T) {
+    pool: Task_Pool
+    testing.expect(t, task_pool_init(&pool, 1))
+    defer task_pool_destroy(&pool)
+    payload: Task_Test_Payload
+    handle, outcome := task_pool_submit(
+        &pool, task_test_wait_for_cancellation, &payload)
+    testing.expect_value(t, outcome, Task_Submit_Outcome.Queued)
+
+    testing.expect_value(t, task_pool_cancel(&pool, handle),
+        Task_Cancel_Outcome.Requested)
+    result, joined := task_pool_wait(&pool, handle)
+
+    testing.expect_value(t, result, Task_Result.Cancelled)
+    testing.expect_value(t, joined, Task_Join_Outcome.Joined)
+    testing.expect(t, payload.executed)
+}
+
+// Verify fence aggregation reports cancellation unless any joined task failed.
+@(test)
+task_pool_test_fence_result_precedence :: proc(t: ^testing.T) {
+    pool: Task_Pool
+    testing.expect(t, task_pool_init(&pool, 2))
+    defer task_pool_destroy(&pool)
+    cancelled_payload := Task_Test_Payload{input = 2}
+    succeeded_payload := Task_Test_Payload{input = 3}
+    fence, initialized := task_fence_begin(&pool)
+    testing.expect(t, initialized)
+    testing.expect_value(t, task_fence_submit(
+        &pool, &fence, task_test_execute, &cancelled_payload),
+        Task_Submit_Outcome.Queued)
+    testing.expect_value(t, task_fence_submit(
+        &pool, &fence, task_test_execute, &succeeded_payload),
+        Task_Submit_Outcome.Queued)
+    testing.expect_value(t, task_pool_cancel(&pool, fence.handles[0]),
+        Task_Cancel_Outcome.Requested)
+    testing.expect_value(t, task_fence_wait(&pool, &fence),
+        Task_Result.Cancelled)
+
+    cancelled_payload = {input = 4}
+    failed_payload := Task_Test_Payload{fail = true}
+    fence, initialized = task_fence_begin(&pool)
+    testing.expect(t, initialized)
+    testing.expect_value(t, task_fence_submit(
+        &pool, &fence, task_test_execute, &cancelled_payload),
+        Task_Submit_Outcome.Queued)
+    testing.expect_value(t, task_fence_submit(
+        &pool, &fence, task_test_execute, &failed_payload),
+        Task_Submit_Outcome.Queued)
+    testing.expect_value(t, task_pool_cancel(&pool, fence.handles[0]),
+        Task_Cancel_Outcome.Requested)
+    testing.expect_value(t, task_fence_wait(&pool, &fence), Task_Result.Failed)
 }
 
 // Verify shutdown rejects new work after finishing every accepted task.

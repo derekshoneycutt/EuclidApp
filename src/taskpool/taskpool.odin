@@ -4,6 +4,7 @@ import "core:mem"
 import tlsf "core:mem/tlsf"
 import vmem "core:mem/virtual"
 import "core:os"
+import "core:sync"
 import "core:thread"
 import "core:container/queue"
 
@@ -16,6 +17,7 @@ TASK_POOL_INITIAL_QUEUE_CAPACITY :: 16
 Task_Result :: enum {
     Succeeded,
     Failed,
+    Cancelled,
 }
 
 // Result of attempting to acquire a bounded task slot.
@@ -38,6 +40,13 @@ Task_Join_Outcome :: enum {
     Stale_Handle,
 }
 
+// Result of requesting cancellation for one live task generation.
+Task_Cancel_Outcome :: enum {
+    Requested,
+    Already_Requested,
+    Stale_Handle,
+}
+
 // Owner-visible lifecycle of one reusable task slot.
 Task_Slot_State :: enum {
     Available,
@@ -53,10 +62,17 @@ Task_Pool_State :: enum {
     Stopped,
 }
 
+// Read-only cooperative cancellation capability valid only during task execution.
+Task_Cancellation_Token :: struct {
+    requested: ^bool,
+}
+
 // Worker entry point for finite work over caller-owned payload storage.
 // The payload and every writable object reachable from it must remain exclusively
-// task-owned from successful submission through join.
-Task_Procedure :: #type proc(payload: rawptr) -> Task_Result
+// task-owned from successful submission through join. The token may be polled at
+// bounded interruption points but does not shorten payload ownership.
+Task_Procedure :: #type proc(
+    payload: rawptr, token: Task_Cancellation_Token) -> Task_Result
 
 // Generational capability identifying one live slot lifetime.
 // Reuse keeps the index but increments generation so old handles become stale.
@@ -74,6 +90,7 @@ Task_Slot :: struct {
     procedure : Task_Procedure,
     payload : rawptr,
     result : Task_Result,
+    cancellation_requested : bool,
 }
 
 // Owner-side group of handles joined in deterministic submission order.
@@ -301,7 +318,21 @@ task_pool_init :: proc(
 //   - Invokes the task procedure and writes only the slot's result field.
 task_pool_execute_slot :: proc(task: thread.Task) {
     slot := (^Task_Slot)(task.data)
-    slot.result = slot.procedure(slot.payload)
+    slot.result = slot.procedure(slot.payload, {
+        requested = &slot.cancellation_requested,
+    })
+}
+
+//   Report whether cancellation has been requested for the executing task.
+//
+// Parameters:
+//   - token: Pool-issued capability valid only during one task invocation.
+//
+// Returns:
+//   - True after an owner release-stores cancellation; false for nil or active tokens.
+task_cancellation_requested :: proc(token: Task_Cancellation_Token) -> bool {
+    return token.requested != nil &&
+        sync.atomic_load_explicit(token.requested, .Acquire)
 }
 
 //   Publish backend completions into owner-visible slot state.
@@ -372,12 +403,43 @@ task_pool_submit :: proc(
         slot.procedure = procedure
         slot.payload = payload
         slot.result = .Failed
+        sync.atomic_store_explicit(
+            &slot.cancellation_requested, false, .Release)
         pool.outstanding_count += 1
         thread.pool_add_task(&pool.backend, mem.nil_allocator(),
             task_pool_execute_slot, &slot, index)
         return {index = index, generation = slot.generation}, .Queued
     }
     return {}, .Queue_Full
+}
+
+//   Request cooperative cancellation for one live task generation.
+//
+// Notes:
+//   - Cancellation remains valid through completion until join consumes the handle.
+//   - The task retains payload ownership and must still be joined exactly once.
+//
+// Returns:
+//   - `Requested`, `Already_Requested`, or `Stale_Handle`.
+//
+// Side effects:
+//   - Release-stores the slot cancellation flag for worker and join observation.
+task_pool_cancel :: proc(
+    pool: ^Task_Pool, handle: Task_Handle) -> Task_Cancel_Outcome {
+    if pool == nil {
+        return .Stale_Handle
+    }
+    task_pool_collect_completed(pool)
+    slot, live := task_pool_slot(pool, handle)
+    if !live {
+        return .Stale_Handle
+    }
+    if sync.atomic_load_explicit(&slot.cancellation_requested, .Acquire) {
+        return .Already_Requested
+    }
+    sync.atomic_store_explicit(
+        &slot.cancellation_requested, true, .Release)
+    return .Requested
 }
 
 //   Check task readiness without consuming its terminal result.
@@ -446,6 +508,10 @@ task_pool_wait :: proc(
         }
         if slot.state == .Completed {
             result := slot.result
+            if sync.atomic_load_explicit(
+                &slot.cancellation_requested, .Acquire) {
+                result = .Cancelled
+            }
             slot.state = .Available
             slot.procedure = nil
             slot.payload = nil
@@ -527,6 +593,8 @@ task_fence_wait :: proc(pool: ^Task_Pool, fence: ^Task_Fence) -> Task_Result {
         result, outcome := task_pool_wait(pool, fence.handles[index])
         if outcome != .Joined || result == .Failed {
             aggregate = .Failed
+        } else if result == .Cancelled && aggregate == .Succeeded {
+            aggregate = .Cancelled
         }
     }
     delete(fence.handles,

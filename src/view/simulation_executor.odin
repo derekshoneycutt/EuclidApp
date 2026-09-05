@@ -64,7 +64,8 @@ destroy_simulation_executor :: proc(executor: ^Simulation_Executor) {
 }
 
 //   Run one particle-system fixed step on a simulation worker.
-update_particles_task :: proc(payload: rawptr) -> taskpool.Task_Result {
+update_particles_task :: proc(
+    payload: rawptr, _: taskpool.Task_Cancellation_Token) -> taskpool.Task_Result {
     data := cast(^Simulation_Task_Data)payload
     particles.update_particles(data^.state^.particle_system, data^.dt)
     _ = evidence_session.session_record(
@@ -82,7 +83,8 @@ update_particles_task :: proc(payload: rawptr) -> taskpool.Task_Result {
 }
 
 //   Solve point-system constraints on a simulation worker.
-solve_constraints_task :: proc(payload: rawptr) -> taskpool.Task_Result {
+solve_constraints_task :: proc(
+    payload: rawptr, _: taskpool.Task_Cancellation_Token) -> taskpool.Task_Result {
     data := cast(^Simulation_Task_Data)payload
     shapes.apply_all_constraints_to_error(
         data^.state^.point_system, ALLOWED_CONSTRAINT_ERROR)
@@ -103,7 +105,8 @@ solve_constraints_task :: proc(payload: rawptr) -> taskpool.Task_Result {
 }
 
 //   Build interpolated shape draw data on a frame-preparation worker.
-build_shape_cache_task :: proc(payload: rawptr) -> taskpool.Task_Result {
+build_shape_cache_task :: proc(
+    payload: rawptr, _: taskpool.Task_Cancellation_Token) -> taskpool.Task_Result {
     data := cast(^Frame_Preparation_Task_Data)payload
     shapes.build_draw_cache(data^.state^.point_system, data^.interpolation_alpha)
     _ = evidence_session.session_record(
@@ -122,7 +125,8 @@ build_shape_cache_task :: proc(payload: rawptr) -> taskpool.Task_Result {
 }
 
 //   Compile invalidated Dynview text and layout caches on a frame-preparation worker.
-compile_dynview_task :: proc(payload: rawptr) -> taskpool.Task_Result {
+compile_dynview_task :: proc(
+    payload: rawptr, _: taskpool.Task_Cancellation_Token) -> taskpool.Task_Result {
     data := cast(^Frame_Preparation_Task_Data)payload
     runtime := &data^.state^.dynview
     runtime^.cache_access_state = .Worker_Mutable

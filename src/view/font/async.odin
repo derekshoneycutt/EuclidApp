@@ -25,10 +25,23 @@ Font_Prepare_Operation :: core.Font_Prepare_Operation
 //
 // Side effects:
 //   - Writes only `task.prepared`; does not call raylib or mutate the cache.
-prepare_task_execute :: proc(payload: rawptr) -> taskpool.Task_Result {
+prepare_task_cancel_requested :: proc(user_data: rawptr) -> bool {
+    token := cast(^taskpool.Task_Cancellation_Token)user_data
+    return token != nil && taskpool.task_cancellation_requested(token^)
+}
+
+//   Prepare one task-owned font result without touching display resources.
+prepare_task_execute :: proc(
+    payload: rawptr,
+    token: taskpool.Task_Cancellation_Token) -> taskpool.Task_Result {
     task := cast(^Font_Prepare_Task)payload
     path := string(task.path_storage[:task.path_length])
     prepared := false
+    cancellation_token := token
+    cancellation := Font_Prepare_Cancellation{
+        user_data = &cancellation_token,
+        requested = prepare_task_cancel_requested,
+    }
     switch task.kind {
     case .Seed:
         prepared = prepare({
@@ -37,6 +50,7 @@ prepare_task_execute :: proc(payload: rawptr) -> taskpool.Task_Result {
             path = path,
             pixel_size = task.pixel_size,
             codepoints = task.codepoints[:task.codepoint_count],
+            cancellation = cancellation,
         }, &task.prepared, task.allocator, .Arena)
     case .Glyph_Page:
         prepared = prepare_glyph_page({
@@ -45,6 +59,7 @@ prepare_task_execute :: proc(payload: rawptr) -> taskpool.Task_Result {
             path = path,
             pixel_size = task.pixel_size,
             glyph_ids = task.glyph_ids[:task.glyph_id_count],
+            cancellation = cancellation,
         }, &task.prepared, task.allocator, .Arena)
     }
     if prepared {
@@ -290,6 +305,25 @@ cache_preparation_is_current :: proc(cache: ^Font_Cache) -> bool {
     return false
 }
 
+//   Request cancellation for one accepted font preparation exactly once.
+//
+// Returns:
+//   - True when the live task already has or newly receives a cancellation request.
+//
+// Side effects:
+//   - Increments request telemetry only for the first successful request.
+cache_request_preparation_cancellation :: proc(
+    cache: ^Font_Cache, pool: ^taskpool.Task_Pool) -> bool {
+    if cache == nil || pool == nil || cache.preparation.state != .Queued {
+        return false
+    }
+    outcome := taskpool.task_pool_cancel(pool, cache.preparation.handle)
+    if outcome == .Requested {
+        cache.preparation.cancellation_request_count += 1
+    }
+    return outcome == .Requested || outcome == .Already_Requested
+}
+
 //   Publish one completed CPU product through its display-owned path.
 //
 // Returns:
@@ -379,7 +413,10 @@ cache_complete_preparation :: proc(
 
     task := &cache.preparation.task
     result, joined := taskpool.task_pool_wait(pool, cache.preparation.handle)
-    if joined == .Joined && result == .Succeeded &&
+    if joined == .Joined && result == .Cancelled {
+        cache.preparation.cancellation_completion_count += 1
+        cache_fail_preparation(cache)
+    } else if joined == .Joined && result == .Succeeded &&
         cache_preparation_is_current(cache) &&
         cache_publish_preparation(cache) {
         cache.preparation.publication_count += 1
@@ -422,6 +459,9 @@ cache_service :: proc(cache: ^Font_Cache, pool: ^taskpool.Task_Pool) {
     if cache.preparation.state == .Retry {
         cache_submit_preparation(cache, pool)
         return
+    }
+    if !cache_preparation_is_current(cache) {
+        _ = cache_request_preparation_cancellation(cache, pool)
     }
 
     poll := taskpool.task_pool_poll(pool, cache.preparation.handle)
@@ -486,6 +526,7 @@ cache_shutdown_service :: proc(
     if cache.preparation.state == .Idle {
         return
     }
+    _ = cache_request_preparation_cancellation(cache, pool)
     taskpool.task_pool_shutdown(pool)
     cache_service(cache, pool)
     assert(cache.preparation.state == .Idle)

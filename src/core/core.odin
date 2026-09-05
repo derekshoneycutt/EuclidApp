@@ -1869,6 +1869,8 @@ Font_Prepare_Operation :: struct {
     failure_count: u64,
     publication_count: u64,
     stale_completion_count: u64,
+    cancellation_request_count: u64,
+    cancellation_completion_count: u64,
 }
 
 Font_Source_Signature :: struct {

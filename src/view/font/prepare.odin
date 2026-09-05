@@ -13,6 +13,22 @@ FONT_GLYPH_PADDING :: i32(4)
 // Opaque white marker dimensions written into the atlas bottom-right corner.
 FONT_ATLAS_CORNER_SIZE :: 3
 
+// Caller-owned cancellation query used at bounded font-preparation checkpoints.
+Font_Prepare_Cancel_Proc :: #type proc(user_data: rawptr) -> bool
+
+// Optional cooperative cancellation capability borrowed for one preparation call.
+Font_Prepare_Cancellation :: struct {
+    user_data: rawptr,
+    requested: Font_Prepare_Cancel_Proc,
+}
+
+// Result of cancellable glyph layout before atlas allocation.
+Font_Prepare_Layout_Result :: struct {
+    width: i32,
+    height: i32,
+    ready: bool,
+}
+
 // Immutable CPU preparation request; path/codepoints are borrowed for the call/task lifetime.
 Font_Prepare_Request :: struct {
     key: Font_Key,
@@ -21,6 +37,7 @@ Font_Prepare_Request :: struct {
     pixel_size: i32,
     codepoints: []rune,
     complete_face: bool,
+    cancellation: Font_Prepare_Cancellation,
 }
 
 // Immutable subset request whose glyph IDs are borrowed for the preparation call.
@@ -30,12 +47,20 @@ Font_Glyph_Page_Request :: struct {
     path: string,
     pixel_size: i32,
     glyph_ids: []u32,
+    cancellation: Font_Prepare_Cancellation,
 }
 
 Prepared_Font_Allocation_Mode :: core.Prepared_Font_Allocation_Mode
 Prepared_Glyph :: core.Prepared_Glyph
 Prepared_Rectangle :: core.Prepared_Rectangle
 Prepared_Font :: core.Prepared_Font
+
+//   Query an optional caller-owned cancellation capability.
+prepare_cancellation_requested :: proc(
+    cancellation: Font_Prepare_Cancellation) -> bool {
+    return cancellation.requested != nil &&
+        cancellation.requested(cancellation.user_data)
+}
 
 //   Release every allocation owned by a prepared CPU font result.
 //
@@ -56,16 +81,21 @@ prepare_destroy :: proc(prepared: ^Prepared_Font) {
 
 //   Lay out prepared glyphs and commit stable result metadata.
 prepare_commit_layout :: proc(
-    request: Font_Prepare_Request, prepared: ^Prepared_Font) {
-    atlas_width, atlas_height := prepare_layout(
-        prepared.glyphs, request.pixel_size, prepared.rectangles)
+    request: Font_Prepare_Request, prepared: ^Prepared_Font) -> bool {
+    layout := prepare_layout(
+        prepared.glyphs, request.pixel_size, prepared.rectangles,
+        request.cancellation)
+    if !layout.ready {
+        return false
+    }
     prepared.key = request.key
     prepared.generation = request.generation
     prepared.base_size = request.pixel_size
     prepared.glyph_count = i32(len(prepared.glyphs))
     prepared.padding = FONT_GLYPH_PADDING
-    prepared.atlas_width = atlas_width
-    prepared.atlas_height = atlas_height
+    prepared.atlas_width = layout.width
+    prepared.atlas_height = layout.height
+    return true
 }
 
 //   Read one font source and initialize its stb font descriptor.
@@ -86,6 +116,9 @@ prepare_open_font :: proc(
 prepare_allocate_glyph_metadata :: proc(
     info: ^stbtt.fontinfo, request: Font_Prepare_Request,
     prepared: ^Prepared_Font, allocator: mem.Allocator) -> bool {
+    if prepare_cancellation_requested(request.cancellation) {
+        return false
+    }
     glyph_count := int(info.numGlyphs) if request.complete_face else
         prepare_count_glyphs(info, request.codepoints)
     return glyph_count > 0 &&
@@ -98,6 +131,7 @@ prepare_populate :: proc(
     prepared: ^Prepared_Font, allocator: mem.Allocator) -> bool {
 
     if !prepare_allocate_glyph_metadata(info, request, prepared, allocator) {
+        prepare_destroy(prepared)
         return false
     }
     prepared.face_glyph_count = info.numGlyphs
@@ -112,11 +146,21 @@ prepare_populate :: proc(
         prepare_destroy(prepared)
         return false
     }
-    prepare_commit_layout(request, prepared)
+    if !prepare_commit_layout(request, prepared) {
+        prepare_destroy(prepared)
+        return false
+    }
     if !prepare_allocate_atlas(prepared, allocator) {
         return false
     }
-    prepare_render_atlas(info, prepared)
+    if !prepare_render_atlas(info, prepared, request.cancellation) {
+        prepare_destroy(prepared)
+        return false
+    }
+    if prepare_cancellation_requested(request.cancellation) {
+        prepare_destroy(prepared)
+        return false
+    }
     return true
 }
 
@@ -147,6 +191,10 @@ prepare :: proc(
         allocation_mode = allocation_mode,
         complete_face = request.complete_face,
     }
+    if prepare_cancellation_requested(request.cancellation) {
+        prepare_destroy(prepared)
+        return false
+    }
     info: stbtt.fontinfo
     file_data, opened := prepare_open_font(request.path, allocator, &info)
     if !opened {
@@ -158,7 +206,10 @@ prepare :: proc(
     defer if allocation_mode == .Individual {
         delete(file_data, allocator)
     }
-
+    if prepare_cancellation_requested(request.cancellation) {
+        prepare_destroy(prepared)
+        return false
+    }
     return prepare_populate(&info, request, prepared, allocator)
 }
 
@@ -189,15 +240,20 @@ prepare_glyph_page_request_is_valid :: proc(
 //   Populate compact page-local metrics while preserving original face glyph IDs.
 prepare_glyph_page_metrics :: proc(
     info: ^stbtt.fontinfo, pixel_size: i32,
-    glyph_ids: []u32, glyphs: []Prepared_Glyph) {
+    glyph_ids: []u32, glyphs: []Prepared_Glyph,
+    cancellation: Font_Prepare_Cancellation) -> bool {
 
     scale := stbtt.ScaleForPixelHeight(info, f32(pixel_size))
     ascent: i32
     stbtt.GetFontVMetrics(info, &ascent, nil, nil)
     for glyph_id, index in glyph_ids {
+        if prepare_cancellation_requested(cancellation) {
+            return false
+        }
         glyphs[index] = prepare_face_glyph_metric(
             info, i32(glyph_id), scale, ascent)
     }
+    return true
 }
 
 //   Allocate, lay out, and rasterize one validated glyph page.
@@ -211,17 +267,28 @@ prepare_glyph_page_populate :: proc(
         return false
     }
     prepared.face_glyph_count = info.numGlyphs
-    prepare_glyph_page_metrics(
-        info, request.pixel_size, request.glyph_ids, prepared.glyphs)
-    prepare_commit_layout({
+    if !prepare_glyph_page_metrics(
+        info, request.pixel_size, request.glyph_ids, prepared.glyphs,
+        request.cancellation) || !prepare_commit_layout({
         key = request.key,
         generation = request.generation,
         pixel_size = request.pixel_size,
-    }, prepared)
+        cancellation = request.cancellation,
+    }, prepared) {
+        prepare_destroy(prepared)
+        return false
+    }
     if !prepare_allocate_atlas(prepared, allocator) {
         return false
     }
-    prepare_render_atlas(info, prepared)
+    if !prepare_render_atlas(info, prepared, request.cancellation) {
+        prepare_destroy(prepared)
+        return false
+    }
+    if prepare_cancellation_requested(request.cancellation) {
+        prepare_destroy(prepared)
+        return false
+    }
     return true
 }
 
@@ -241,6 +308,10 @@ prepare_glyph_page :: proc(
         allocator = allocator,
         allocation_mode = allocation_mode,
     }
+    if prepare_cancellation_requested(request.cancellation) {
+        prepare_destroy(prepared)
+        return false
+    }
     info: stbtt.fontinfo
     file_data, opened := prepare_open_font(request.path, allocator, &info)
     if !opened {
@@ -251,6 +322,10 @@ prepare_glyph_page :: proc(
     }
     defer if allocation_mode == .Individual {
         delete(file_data, allocator)
+    }
+    if prepare_cancellation_requested(request.cancellation) {
+        prepare_destroy(prepared)
+        return false
     }
     return prepare_glyph_page_populate(&info, request, prepared, allocator)
 }
@@ -326,6 +401,9 @@ prepare_glyph_metrics :: proc(
     stbtt.GetFontVMetrics(info, &ascent, &descent, &line_gap)
     glyph_index := 0
     for codepoint in request.codepoints {
+        if prepare_cancellation_requested(request.cancellation) {
+            return false
+        }
         if stbtt.FindGlyphIndex(info, codepoint) <= 0 {
             continue
         }
@@ -348,10 +426,16 @@ prepare_complete_glyph_metrics :: proc(
     ascent: i32
     stbtt.GetFontVMetrics(info, &ascent, nil, nil)
     for &glyph, glyph_index in glyphs {
+        if prepare_cancellation_requested(request.cancellation) {
+            return false
+        }
         glyph = prepare_face_glyph_metric(
             info, i32(glyph_index), scale, ascent)
     }
     for codepoint in request.codepoints {
+        if prepare_cancellation_requested(request.cancellation) {
+            return false
+        }
         glyph_id := stbtt.FindGlyphIndex(info, codepoint)
         if glyph_id > 0 {
             glyphs[glyph_id].value = codepoint
@@ -461,13 +545,17 @@ prepare_initial_atlas_size :: proc(
 //   - Power-of-two atlas width and dynamically doubled height containing every glyph.
 prepare_layout :: proc(
     glyphs: []Prepared_Glyph, pixel_size: i32,
-    rectangles: []Prepared_Rectangle) -> (i32, i32) {
+    rectangles: []Prepared_Rectangle,
+    cancellation: Font_Prepare_Cancellation = {}) -> Font_Prepare_Layout_Result {
 
     atlas_width, atlas_height := prepare_initial_atlas_size(glyphs, pixel_size)
     offset_x := FONT_GLYPH_PADDING
     offset_y := FONT_GLYPH_PADDING
     row_height := i32(0)
     for glyph, index in glyphs {
+        if prepare_cancellation_requested(cancellation) {
+            return {}
+        }
         if offset_x > FONT_GLYPH_PADDING &&
             offset_x+glyph.bitmap_width+FONT_GLYPH_PADDING > atlas_width {
             offset_x = FONT_GLYPH_PADDING
@@ -486,22 +574,34 @@ prepare_layout :: proc(
         row_height = max(row_height, glyph.bitmap_height)
         offset_x += glyph.bitmap_width + 2*FONT_GLYPH_PADDING
     }
-    return atlas_width, atlas_height
+    return {width = atlas_width, height = atlas_height, ready = true}
 }
 
-//   Rasterize glyph alpha into the packed two-channel atlas and add its white corner.
-//
-// Side effects:
-//   - Sets every gray channel byte to 255, writes non-space stb bitmap coverage into
-//     alpha, and marks the bottom-right corner opaque for downstream validation.
-prepare_render_atlas :: proc(
-    info: ^stbtt.fontinfo, prepared: ^Prepared_Font) {
-
-    for pixel_index in 0..<int(prepared.atlas_width*prepared.atlas_height) {
-        prepared.atlas_pixels[pixel_index*2] = 255
+//   Initialize the atlas gray channel while observing cancellation once per row.
+prepare_initialize_atlas :: proc(
+    prepared: ^Prepared_Font,
+    cancellation: Font_Prepare_Cancellation) -> bool {
+    for row in 0..<int(prepared.atlas_height) {
+        if prepare_cancellation_requested(cancellation) {
+            return false
+        }
+        for column in 0..<int(prepared.atlas_width) {
+            pixel_index := row*int(prepared.atlas_width) + column
+            prepared.atlas_pixels[pixel_index*2] = 255
+        }
     }
+    return true
+}
+
+//   Rasterize each nonempty glyph while observing cancellation between glyphs.
+prepare_render_glyphs :: proc(
+    info: ^stbtt.fontinfo, prepared: ^Prepared_Font,
+    cancellation: Font_Prepare_Cancellation) -> bool {
     scale := stbtt.ScaleForPixelHeight(info, f32(prepared.base_size))
     for glyph, index in prepared.glyphs {
+        if prepare_cancellation_requested(cancellation) {
+            return false
+        }
         if glyph.value == ' ' || glyph.value == rune(0x3000) ||
             glyph.bitmap_width == 0 || glyph.bitmap_height == 0 {
             continue
@@ -516,7 +616,11 @@ prepare_render_atlas :: proc(
             stbtt.FreeBitmap(bitmap, info.userdata)
         }
     }
+    return true
+}
 
+//   Mark the atlas validation corner after every glyph is complete.
+prepare_mark_atlas_corner :: proc(prepared: ^Prepared_Font) {
     for corner_y in 0..<FONT_ATLAS_CORNER_SIZE {
         for corner_x in 0..<FONT_ATLAS_CORNER_SIZE {
             x := prepared.atlas_width - 1 - i32(corner_x)
@@ -525,6 +629,22 @@ prepare_render_atlas :: proc(
                 int((y*prepared.atlas_width + x)*2 + 1)] = 255
         }
     }
+}
+
+//   Rasterize glyph alpha into the packed two-channel atlas and add its white corner.
+//
+// Side effects:
+//   - Sets every gray channel byte to 255, writes non-space stb bitmap coverage into
+//     alpha, and marks the bottom-right corner opaque for downstream validation.
+prepare_render_atlas :: proc(
+    info: ^stbtt.fontinfo, prepared: ^Prepared_Font,
+    cancellation: Font_Prepare_Cancellation = {}) -> bool {
+    if !prepare_initialize_atlas(prepared, cancellation) ||
+        !prepare_render_glyphs(info, prepared, cancellation) {
+        return false
+    }
+    prepare_mark_atlas_corner(prepared)
+    return true
 }
 
 //   Copy one grayscale stb bitmap into the atlas alpha channel.

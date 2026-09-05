@@ -28,13 +28,66 @@ Math_Shaping_Task_Test_Result :: struct {
     properties_ready: bool,
 }
 
+Font_Cancel_Test_State :: struct {
+    query_count: int,
+    cancel_at: int,
+}
+
+// Request cancellation at one deterministic preparation checkpoint.
+font_test_cancel_at_checkpoint :: proc(user_data: rawptr) -> bool {
+    state := cast(^Font_Cancel_Test_State)user_data
+    state^.query_count += 1
+    return state^.query_count >= state^.cancel_at
+}
+
+// Wait until a font-owner test requests cancellation through the live task token.
+font_test_wait_for_cancellation :: proc(
+    payload: rawptr,
+    token: taskpool.Task_Cancellation_Token) -> taskpool.Task_Result {
+    observed := cast(^bool)payload
+    for !taskpool.task_cancellation_requested(token) {
+        thread.yield()
+    }
+    observed^ = true
+    return .Cancelled
+}
+
+// Configure one accepted stale page operation over caller-owned glyph storage.
+font_test_configure_stale_page :: proc(
+    cache: ^Font_Cache, handle: taskpool.Task_Handle,
+    glyphs: []Font_Glyph_Record) {
+    glyphs[17].state = .Queued
+    glyphs[18].state = .Queued
+    cache.entries[int(Font_Key.Bold)] = {
+        generation = 5,
+        requested_generation = 6,
+        resident = true,
+        state = .Requested,
+        glyphs = glyphs,
+        queued_demand_count = 1,
+    }
+    cache.preparation.state = .Queued
+    cache.preparation.handle = handle
+    cache.preparation.task = {
+        kind = .Glyph_Page,
+        key = .Bold,
+        generation = 5,
+        glyph_id_count = 2,
+        demanded_glyph_count = 1,
+    }
+    cache.preparation.task.glyph_ids[0] = 17
+    cache.preparation.task.glyph_ids[1] = 18
+}
+
 // Complete one pool slot without touching shared application state.
-test_task_succeed :: proc(payload: rawptr) -> taskpool.Task_Result {
+test_task_succeed :: proc(
+    payload: rawptr, _: taskpool.Task_Cancellation_Token) -> taskpool.Task_Result {
     return .Succeeded
 }
 
 // Shape one fixed math run through worker-exclusive capability ownership.
-test_math_shaping_task :: proc(payload: rawptr) -> taskpool.Task_Result {
+test_math_shaping_task :: proc(
+    payload: rawptr, _: taskpool.Task_Cancellation_Token) -> taskpool.Task_Result {
     result := cast(^Math_Shaping_Task_Test_Result)payload
     result^.glyph_count, result^.shaped = math_shaping_shape(
         result^.capability, result^.generation, {
@@ -639,6 +692,52 @@ view_test_prepare_complete_regular :: proc(t: ^testing.T) {
     prepare_destroy(&prepared)
 }
 
+// Verify cancellation before source I/O leaves no partial prepared-font ownership.
+@(test)
+view_test_prepare_cancels_before_open :: proc(t: ^testing.T) {
+    state := Font_Cancel_Test_State{cancel_at = 1}
+    prepared: Prepared_Font
+    success := prepare({
+        path = "assets/JuliaMono-Regular.ttf",
+        pixel_size = JULIA_MONO_FONT_SIZE,
+        codepoints = []rune{'A'},
+        cancellation = {
+            user_data = &state,
+            requested = font_test_cancel_at_checkpoint,
+        },
+    }, &prepared, context.allocator)
+
+    testing.expect(t, !success)
+    testing.expect_value(t, state.query_count, 1)
+    testing.expect_value(t, prepared.glyph_count, i32(0))
+    testing.expect_value(t, len(prepared.glyphs), 0)
+    testing.expect_value(t, len(prepared.atlas_pixels), 0)
+}
+
+// Verify full-face cancellation rolls back metadata allocated before rasterization.
+@(test)
+view_test_prepare_complete_cancellation_clears_result :: proc(t: ^testing.T) {
+    codepoints := seed_codepoint_set()
+    state := Font_Cancel_Test_State{cancel_at = 8}
+    prepared: Prepared_Font
+    success := prepare({
+        path = "assets/JuliaMono-Regular.ttf",
+        pixel_size = JULIA_MONO_FONT_SIZE,
+        codepoints = codepoints.values[:codepoints.count],
+        complete_face = true,
+        cancellation = {
+            user_data = &state,
+            requested = font_test_cancel_at_checkpoint,
+        },
+    }, &prepared, context.allocator)
+
+    testing.expect(t, !success)
+    testing.expect(t, state.query_count >= state.cancel_at)
+    testing.expect_value(t, prepared.glyph_count, i32(0))
+    testing.expect_value(t, len(prepared.glyphs), 0)
+    testing.expect_value(t, len(prepared.atlas_pixels), 0)
+}
+
 // Verify bounded subset preparation preserves face glyph IDs and deterministic packing.
 @(test)
 view_test_prepare_glyph_page :: proc(t: ^testing.T) {
@@ -662,6 +761,29 @@ view_test_prepare_glyph_page :: proc(t: ^testing.T) {
     }
     prepare_destroy(&first)
     prepare_destroy(&second)
+}
+
+// Verify glyph-page cancellation clears partial compact-page ownership.
+@(test)
+view_test_prepare_glyph_page_cancellation_clears_result :: proc(t: ^testing.T) {
+    glyph_ids := [3]u32{0, 17, 4000}
+    state := Font_Cancel_Test_State{cancel_at = 5}
+    prepared: Prepared_Font
+    success := prepare_glyph_page({
+        path = "assets/JuliaMono-Regular.ttf",
+        pixel_size = JULIA_MONO_FONT_SIZE,
+        glyph_ids = glyph_ids[:],
+        cancellation = {
+            user_data = &state,
+            requested = font_test_cancel_at_checkpoint,
+        },
+    }, &prepared, context.allocator)
+
+    testing.expect(t, !success)
+    testing.expect(t, state.query_count >= state.cancel_at)
+    testing.expect_value(t, prepared.glyph_count, i32(0))
+    testing.expect_value(t, len(prepared.glyphs), 0)
+    testing.expect_value(t, len(prepared.atlas_pixels), 0)
 }
 
 // Verify page preparation rejects duplicate and out-of-range face glyph IDs.
@@ -1241,16 +1363,122 @@ view_test_cache_service_discards_stale_completion :: proc(t: ^testing.T) {
         generation = 5,
         prepared = {key = .Bold, generation = 5, glyph_count = 1},
     }
-    for !cache_preparation_idle(&cache) {
-        cache_service(&cache, &pool)
+    for taskpool.task_pool_poll(&pool, handle) == .Pending {
         thread.yield()
     }
+    cache_complete_preparation(&cache, &pool)
 
     testing.expect_value(t, cache.preparation.stale_completion_count, u64(1))
     testing.expect_value(t, cache.preparation.publication_count, u64(0))
     testing.expect_value(t, cache.preparation.failure_count, u64(0))
     testing.expect_value(t, cache.entries[int(Font_Key.Bold)].font.baseSize, 55)
     testing.expect_value(t, cache.entries[int(Font_Key.Bold)].generation, u64(4))
+}
+
+// Verify a superseded accepted seed is cancelled, joined, and classified separately.
+@(test)
+view_test_cache_service_cancels_superseded_preparation :: proc(t: ^testing.T) {
+    pool: taskpool.Task_Pool
+    testing.expect(t, taskpool.task_pool_init(&pool, 1, 1))
+    defer taskpool.task_pool_destroy(&pool)
+    observed := false
+    handle, outcome := taskpool.task_pool_submit(
+        &pool, font_test_wait_for_cancellation, &observed)
+    testing.expect_value(t, outcome, taskpool.Task_Submit_Outcome.Queued)
+    cache: Font_Cache
+    cache.entries[int(Font_Key.Bold)] = {
+        generation = 4,
+        requested_generation = 6,
+        resident = true,
+        state = .Requested,
+    }
+    cache.preparation.state = .Queued
+    cache.preparation.handle = handle
+    cache.preparation.task = {
+        kind = .Seed,
+        key = .Bold,
+        generation = 5,
+    }
+
+    for !cache_preparation_idle(&cache) {
+        cache_service(&cache, &pool)
+        thread.yield()
+    }
+
+    testing.expect(t, observed)
+    testing.expect_value(t, cache.preparation.cancellation_request_count, u64(1))
+    testing.expect_value(t, cache.preparation.cancellation_completion_count, u64(1))
+    testing.expect_value(t, cache.preparation.failure_count, u64(0))
+    testing.expect_value(t, cache.preparation.stale_completion_count, u64(0))
+    testing.expect_value(t, pool.outstanding_count, 0)
+}
+
+// Verify cancelled page work restores demand before the next generation proceeds.
+@(test)
+view_test_cache_service_cancelled_page_restores_demand :: proc(t: ^testing.T) {
+    pool: taskpool.Task_Pool
+    testing.expect(t, taskpool.task_pool_init(&pool, 1, 1))
+    defer taskpool.task_pool_destroy(&pool)
+    observed := false
+    handle, outcome := taskpool.task_pool_submit(
+        &pool, font_test_wait_for_cancellation, &observed)
+    testing.expect_value(t, outcome, taskpool.Task_Submit_Outcome.Queued)
+    glyph_storage: [32]Font_Glyph_Record
+    glyphs := glyph_storage[:]
+    cache: Font_Cache
+    font_test_configure_stale_page(&cache, handle, glyphs)
+
+    for !cache_preparation_idle(&cache) {
+        cache_service(&cache, &pool)
+        thread.yield()
+    }
+
+    testing.expect(t, observed)
+    testing.expect_value(t, glyphs[17].state, Font_Glyph_State.Pending)
+    testing.expect_value(t, glyphs[18].state, Font_Glyph_State.Missing)
+    testing.expect_value(t, cache.entries[int(Font_Key.Bold)].queued_demand_count, i32(0))
+    testing.expect_value(t, cache.preparation.cancellation_completion_count, u64(1))
+    testing.expect_value(t, pool.outstanding_count, 0)
+}
+
+// Verify demand for another font does not cancel a current accepted preparation.
+@(test)
+view_test_cache_service_preserves_current_other_key_work :: proc(t: ^testing.T) {
+    pool: taskpool.Task_Pool
+    testing.expect(t, taskpool.task_pool_init(&pool, 1, 1))
+    defer taskpool.task_pool_destroy(&pool)
+    observed := false
+    handle, outcome := taskpool.task_pool_submit(
+        &pool, font_test_wait_for_cancellation, &observed)
+    testing.expect_value(t, outcome, taskpool.Task_Submit_Outcome.Queued)
+    cache: Font_Cache
+    cache.entries[int(Font_Key.Bold)] = {
+        requested_generation = 5,
+        state = .Preparing,
+    }
+    cache.entries[int(Font_Key.Regular_Italic)] = {
+        requested_generation = 2,
+        state = .Requested,
+    }
+    cache.preparation.state = .Queued
+    cache.preparation.handle = handle
+    cache.preparation.task = {
+        kind = .Seed,
+        key = .Bold,
+        generation = 5,
+    }
+
+    cache_service(&cache, &pool)
+    testing.expect_value(t, cache.preparation.cancellation_request_count, u64(0))
+    testing.expect(t, !observed)
+
+    testing.expect_value(t, taskpool.task_pool_cancel(&pool, handle),
+        taskpool.Task_Cancel_Outcome.Requested)
+    for !cache_preparation_idle(&cache) {
+        cache_service(&cache, &pool)
+        thread.yield()
+    }
+    testing.expect(t, observed)
 }
 
 // Verify queue saturation retries and terminal task failure preserves residency.
@@ -1306,7 +1534,11 @@ view_test_cache_shutdown_task_states :: proc(t: ^testing.T) {
         t, queued_cache.preparation.state, Font_Prepare_Operation_State.Queued)
     cache_shutdown_service(&queued_cache, &queued_pool)
     testing.expect(t, cache_preparation_idle(&queued_cache))
-    testing.expect_value(t, queued_cache.preparation.failure_count, u64(1))
+    testing.expect_value(
+        t, queued_cache.preparation.cancellation_request_count, u64(1))
+    testing.expect_value(
+        t, queued_cache.preparation.cancellation_completion_count, u64(1))
+    testing.expect_value(t, queued_cache.preparation.failure_count, u64(0))
     taskpool.task_pool_destroy(&queued_pool)
 }
 
