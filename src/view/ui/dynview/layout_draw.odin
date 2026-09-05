@@ -1452,6 +1452,24 @@ draw_stretch_delimiter_content :: proc(
     return child_program^.draw_width
 }
 
+//   Draw measured content inside a sealed stretch-delimiter construction.
+draw_sealed_stretch_content :: proc(
+    ctx: Layout_Draw_Context,
+    item: core.Dynview_Layout_Item,
+    draw_x, baseline_y: f32) {
+
+    if item.math_program_id <= 0 {
+        return
+    }
+    child_program, ok := dynmath.math_program_from_id(
+        &ctx.runtime^.compile_cache, item.math_program_id)
+    if ok {
+        draw_math_program_at(ctx, child_program^, Program_Draw_Position{
+            draw_x+item.math_stretch_content_x, baseline_y, 0,
+            stretch_delimiter_child_style(item), item.math_stretch_target_height})
+    }
+}
+
 //   Draw one recursive stretch-delimiter wrapper around optional child content.
 //   Left delimiter, child program, and right delimiter are laid out in-order
 //   using runtime stretch metrics so both delimiters share the same baseline.
@@ -1463,16 +1481,7 @@ draw_recursive_stretch_delimiter_item :: #force_inline proc(
 
     baseline_y := item_y + item.ascent
     if draw_sealed_stretch_delimiters(ctx, style, item, draw_x, baseline_y) {
-        if item.math_program_id > 0 {
-            child_program, ok := dynmath.math_program_from_id(
-                &ctx.runtime^.compile_cache, item.math_program_id)
-            if ok {
-                draw_math_program_at(ctx, child_program^, Program_Draw_Position{
-                    draw_x+item.math_stretch_content_x, baseline_y, 0,
-                    stretch_delimiter_child_style(item),
-                    item.math_stretch_target_height})
-            }
-        }
+        draw_sealed_stretch_content(ctx, item, draw_x, baseline_y)
         return
     }
     left_clearance, right_clearance: f32
@@ -1784,15 +1793,15 @@ measure_matrix_draw_cells :: proc(
     return true
 }
 
-//   Draw one recursive structured math item variant routed by layout item kind.
-draw_recursive_structured_item :: #force_inline proc(d: Math_Item_Draw) {
+//   Draw the primary recursive item kinds and report whether one matched.
+draw_primary_structured_item :: #force_inline proc(d: Math_Item_Draw) -> bool {
     ctx := d.ctx
     style := d.style
     item := d.item
     draw_x := d.draw_x
     item_y := d.item_y
 
-    switch item.kind {
+    #partial switch item.kind {
     case .Script_Attach:
         draw_recursive_script_attach_item(ctx, item, draw_x, item_y)
     case .Frac:
@@ -1803,14 +1812,26 @@ draw_recursive_structured_item :: #force_inline proc(d: Math_Item_Draw) {
         draw_recursive_matrix_item(ctx, style, item, draw_x, item_y)
     case .Style_Override:
         draw_recursive_style_override_item(ctx, item, draw_x, item_y)
+    case:
+        return false
+    }
+    return true
+}
+
+//   Draw one recursive structured math item variant routed by layout item kind.
+draw_recursive_structured_item :: #force_inline proc(d: Math_Item_Draw) {
+    if draw_primary_structured_item(d) {
+        return
+    }
+    #partial switch d.item.kind {
     case .Stack:
-        draw_recursive_stack_item(ctx, item, draw_x, item_y)
+        draw_recursive_stack_item(d.ctx, d.item, d.draw_x, d.item_y)
     case .Large_Op:
         draw_large_op_recursive_item(d)
     case .Accent_Bar:
-        draw_recursive_accent_item(ctx, style, item, draw_x, item_y)
+        draw_recursive_accent_item(d.ctx, d.style, d.item, d.draw_x, d.item_y)
     case .Radical_Bar:
-        draw_recursive_radical_item(ctx, item, draw_x, item_y)
+        draw_recursive_radical_item(d.ctx, d.item, d.draw_x, d.item_y)
     case .Text_Run, .Math_Glyph_Run, .Math_Block,
         .Inline_Line, .Inline_Box, .Inline_Circle, .Inline_Filled_Box,
         .Inline_Filled_Circle, .Inline_Pie_Section, .Inline_Perpendicular,

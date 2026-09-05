@@ -109,6 +109,12 @@ Stretch_Delimiter_Content :: struct {
     width, ascent, descent, top_pad, bottom_pad: f32,
 }
 
+Stack_Item_Geometry :: struct {
+    top_x, top_baseline, bottom_x, bottom_baseline: f32,
+    width, ascent, descent: f32,
+    operator_limits: i32,
+}
+
 Radical_Geometry :: struct {
     draw_width, ascent, descent, top_pad, bottom_pad: f32,
 }
@@ -1232,6 +1238,25 @@ math_program_recursive_fraction_item :: #force_inline proc(
 }
 
 //   Build one ruleless two-part stack from font-driven MATH constants.
+stack_layout_item :: #force_inline proc(
+    ctx: Math_Program_Item_Context,
+    geometry: Stack_Item_Geometry) -> app_core.Dynview_Layout_Item {
+
+    return {
+        kind = .Stack, style_id = ctx.cmd.style_id,
+        math_program_id = ctx.cmd.math_program_id,
+        secondary_math_program_id = ctx.cmd.secondary_math_program_id,
+        operator_limits = geometry.operator_limits,
+        fraction_numerator_x = geometry.top_x,
+        fraction_numerator_baseline = geometry.top_baseline,
+        fraction_denominator_x = geometry.bottom_x,
+        fraction_denominator_baseline = geometry.bottom_baseline,
+        draw_width = geometry.width, draw_height = geometry.ascent+geometry.descent,
+        ascent = geometry.ascent, descent = geometry.descent,
+    }
+}
+
+//   Build one ruleless two-part stack from font-driven MATH constants.
 math_program_recursive_stack_item :: proc(
     ctx: Math_Program_Item_Context) -> (app_core.Dynview_Layout_Item, bool) {
 
@@ -1262,20 +1287,11 @@ math_program_recursive_stack_item :: proc(
     if !geometry.valid {
         return {}, false
     }
-    return app_core.Dynview_Layout_Item{
-        kind = .Stack,
-        style_id = ctx.cmd.style_id,
-        math_program_id = ctx.cmd.math_program_id,
-        secondary_math_program_id = ctx.cmd.secondary_math_program_id,
-        fraction_numerator_x = geometry.top_x,
-        fraction_numerator_baseline = geometry.top_baseline,
-        fraction_denominator_x = geometry.bottom_x,
-        fraction_denominator_baseline = geometry.bottom_baseline,
-        draw_width = geometry.width,
-        draw_height = geometry.ascent + geometry.descent,
-        ascent = geometry.ascent,
-        descent = geometry.descent,
-    }, true
+    return stack_layout_item(ctx, {
+        top_x = geometry.top_x, top_baseline = geometry.top_baseline,
+        bottom_x = geometry.bottom_x, bottom_baseline = geometry.bottom_baseline,
+        width = geometry.width, ascent = geometry.ascent, descent = geometry.descent,
+    }), true
 }
 
 //   Build one over- or under-annotation with an unscaled base and script annotation.
@@ -1292,7 +1308,8 @@ math_program_recursive_over_under_item :: proc(
     if !top_ok || !bottom_ok ||
         !measure_math_program(ctx.cache, ctx.buffer, annotation,
             annotation_size, annotation_style) ||
-        !measure_math_program(ctx.cache, ctx.buffer, base, ctx.font_size, ctx.math_style) {
+        !measure_math_program(ctx.cache, ctx.buffer, base,
+            ctx.font_size, ctx.math_style) {
         return {}, false
     }
     geometry := math_over_under_geometry({
@@ -1306,38 +1323,27 @@ math_program_recursive_over_under_item :: proc(
     if !geometry.valid {
         return {}, false
     }
-    return app_core.Dynview_Layout_Item{
-        kind = .Stack, style_id = ctx.cmd.style_id,
-        math_program_id = ctx.cmd.math_program_id,
-        secondary_math_program_id = ctx.cmd.secondary_math_program_id,
+    return stack_layout_item(ctx, {
         operator_limits = ctx.cmd.operator_limits,
-        fraction_numerator_x = geometry.top_x,
-        fraction_numerator_baseline = geometry.top_baseline,
-        fraction_denominator_x = geometry.bottom_x,
-        fraction_denominator_baseline = geometry.bottom_baseline,
-        draw_width = geometry.width, draw_height = geometry.ascent+geometry.descent,
-        ascent = geometry.ascent, descent = geometry.descent,
-    }, true
+        top_x = geometry.top_x, top_baseline = geometry.top_baseline,
+        bottom_x = geometry.bottom_x, bottom_baseline = geometry.bottom_baseline,
+        width = geometry.width, ascent = geometry.ascent, descent = geometry.descent,
+    }), true
 }
 
 //   Build one layout-like item for a recursive stretch-delimiter wrapper.
 stretch_delimiter_content :: proc(
-    cache: ^app_core.Dynview_Compile_Cache,
-    buffer: ^app_core.Dynview_Command_Buffer,
-    cmd: app_core.Dynview_Command,
-    style: dyncore.Dynview_Text_Style,
-    font_size: f32,
-    math_style: Math_Style) -> (Stretch_Delimiter_Content, bool) {
+    ctx: Math_Program_Item_Context) -> (Stretch_Delimiter_Content, bool) {
 
-    ascent, descent := dyncore.style_ascent_descent(style, font_size)
+    ascent, descent := dyncore.style_ascent_descent(ctx.style, ctx.font_size)
     content := Stretch_Delimiter_Content{ascent = ascent, descent = descent}
-    if cmd.math_program_id <= 0 {
+    if ctx.cmd.math_program_id <= 0 {
         return content, true
     }
 
-    child_program, ok := math_program_from_command(cache, cmd)
+    child_program, ok := math_program_from_command(ctx.cache, ctx.cmd)
     if !ok || !measure_math_program(
-        cache, buffer, child_program, font_size, math_style) {
+        ctx.cache, ctx.buffer, child_program, ctx.font_size, ctx.math_style) {
         return {}, false
     }
     return Stretch_Delimiter_Content{
@@ -1372,8 +1378,7 @@ stretch_delimiter_widths :: #force_inline proc(
 math_program_recursive_stretch_delimiter_item :: #force_inline proc(
     ctx: Math_Program_Item_Context) -> (app_core.Dynview_Layout_Item, bool) {
 
-    content, ok := stretch_delimiter_content(
-        ctx.cache, ctx.buffer, ctx.cmd, ctx.style, ctx.font_size, ctx.math_style)
+    content, ok := stretch_delimiter_content(ctx)
     if !ok {
         return app_core.Dynview_Layout_Item{}, false
     }
@@ -1548,37 +1553,44 @@ stretch_delimiter_shared_content_width :: proc(
     return content_width
 }
 
+//   Resolve the requested delimiter height, including shared middle sizing.
+stretch_delimiter_target_height :: #force_inline proc(
+    ctx: Math_Program_Item_Context,
+    item: ^app_core.Dynview_Layout_Item) -> f32 {
+
+    target_height := max(item^.ascent+item^.descent,
+        delimiter_requested_height(ctx.font_size, ctx.cmd.operator_growth))
+    if ctx.cmd.operator_limits == 1 {
+        target_height = max(target_height, ctx.delimiter_target_height)
+    }
+    return target_height
+}
+
 //   Select both visible delimiters and replace fallback dimensions transactionally.
 math_program_apply_stretch_delimiters :: proc(
-    cache: ^app_core.Dynview_Compile_Cache,
-    buffer: ^app_core.Dynview_Command_Buffer,
-    cmd: app_core.Dynview_Command,
-    font_size: f32,
-    command_index: int,
-    shared_target_height: f32,
+    ctx: Math_Program_Item_Context,
     item: ^app_core.Dynview_Layout_Item) {
 
-    constants := cache^.math_constants
-    generation := cache^.shaped_font_generation
-    if !math_constants_are_current(constants, generation) || font_size <= 0 {
+    constants := ctx.cache^.math_constants
+    generation := ctx.cache^.shaped_font_generation
+    if !math_constants_are_current(constants, generation) || ctx.font_size <= 0 {
         return
     }
-    scale := font_size/constants.base_pixel_size/64.0
-    target_height := max(item^.ascent+item^.descent,
-        delimiter_requested_height(font_size, cmd.operator_growth))
-    if cmd.operator_limits == 1 {
-        target_height = max(target_height, shared_target_height)
-    }
+    scale := ctx.font_size/constants.base_pixel_size/64.0
+    target_height := stretch_delimiter_target_height(ctx, item)
     target := i32(target_height/scale + 0.999)
     selected := math_stretch_select_delimiters(
-        cache^.math_stretch_sources[command_index], cmd, generation, scale, target)
+        ctx.cache^.math_stretch_sources[ctx.command_index],
+        ctx.cmd, generation, scale, target)
     if !selected.ok {
         return
     }
-    left_clearance, right_clearance := stretch_delimiter_clearances(cmd, font_size)
+    left_clearance, right_clearance := stretch_delimiter_clearances(
+        ctx.cmd, ctx.font_size)
     content_width := stretch_delimiter_shared_content_width(
-        cache, buffer, cmd.math_program_id, font_size, target_height)
-    axis, _ := math_constant_position_px(constants, generation, .Axis_Height, font_size)
+        ctx.cache, ctx.buffer, ctx.cmd.math_program_id, ctx.font_size, target_height)
+    axis, _ := math_constant_position_px(
+        constants, generation, .Axis_Height, ctx.font_size)
     stretch_delimiter_apply_item(item, {
         selected = selected,
         left_clearance = left_clearance,
@@ -1970,45 +1982,53 @@ math_program_base_accent_attachment :: #force_inline proc(
     return child^.top_accent_attachment
 }
 
-//   Replace one glyph-accent fallback with sealed MATH construction geometry.
-math_program_apply_glyph_accent :: proc(
-    cache: ^app_core.Dynview_Compile_Cache,
-    cmd: app_core.Dynview_Command,
-    font_size: f32,
-    command_index: int,
-    item: ^app_core.Dynview_Layout_Item) {
+//   Publish resolved glyph-accent construction geometry to one layout item.
+math_program_publish_glyph_accent :: proc(
+    item: ^app_core.Dynview_Layout_Item,
+    geometry: Math_Glyph_Accent_Geometry,
+    generation: u64) {
 
-    if command_index < 0 || command_index >= len(cache^.math_accent_sources) {
-        return
-    }
-    child, found := math_program_from_id(cache, cmd.math_program_id)
-    if !found {
-        return
-    }
-    geometry := math_glyph_accent_geometry({
-        constants = cache^.math_constants,
-        generation = cache^.shaped_font_generation, font_size = font_size,
-        child_width = child^.draw_width, child_ascent = child^.ascent,
-        child_descent = child^.descent,
-        base_attachment = math_program_base_accent_attachment(child),
-        sources = cache^.math_accent_sources[command_index],
-        brace_mode = cmd.accent_mode,
-    })
-    if !geometry.valid {
-        return
-    }
     item^.accent_child_x = geometry.child_x
     item^.accent_glyph_x = geometry.accent_x
     item^.accent_glyph_line_top = geometry.accent_line_top
     item^.accent_glyph_scale = geometry.scale
     item^.accent_glyph_raster_ascent = geometry.raster_ascent
-    item^.accent_glyph_font_generation = cache^.shaped_font_generation
+    item^.accent_glyph_font_generation = generation
     item^.accent_glyph_construction = geometry.construction
     item^.accent_geometry_valid = true
     item^.draw_width, item^.math_advance = geometry.width, geometry.width
     item^.ascent, item^.descent = geometry.ascent, geometry.descent
     item^.draw_height = geometry.ascent+geometry.descent
     item^.top_accent_attachment = geometry.top_accent_attachment
+}
+
+//   Replace one glyph-accent fallback with sealed MATH construction geometry.
+math_program_apply_glyph_accent :: proc(
+    ctx: Math_Program_Item_Context,
+    item: ^app_core.Dynview_Layout_Item) {
+
+    if ctx.command_index < 0 ||
+        ctx.command_index >= len(ctx.cache^.math_accent_sources) {
+        return
+    }
+    child, found := math_program_from_id(ctx.cache, ctx.cmd.math_program_id)
+    if !found {
+        return
+    }
+    geometry := math_glyph_accent_geometry({
+        constants = ctx.cache^.math_constants,
+        generation = ctx.cache^.shaped_font_generation, font_size = ctx.font_size,
+        child_width = child^.draw_width, child_ascent = child^.ascent,
+        child_descent = child^.descent,
+        base_attachment = math_program_base_accent_attachment(child),
+        sources = ctx.cache^.math_accent_sources[ctx.command_index],
+        brace_mode = ctx.cmd.accent_mode,
+    })
+    if !geometry.valid {
+        return
+    }
+    math_program_publish_glyph_accent(
+        item, geometry, ctx.cache^.shaped_font_generation)
 }
 
 //   Build one layout-like item for a recursive accent wrapper around a child math program.
@@ -2210,9 +2230,7 @@ math_program_item :: #force_inline proc(
         math_program_apply_operator_variant(resolved_ctx, &item)
     }
     if ok && ctx.cmd.kind == .Stretch_Delimiter && ctx.command_index >= 0 {
-        math_program_apply_stretch_delimiters(
-            ctx.cache, ctx.buffer, ctx.cmd, ctx.font_size, ctx.command_index,
-            ctx.delimiter_target_height, &item)
+        math_program_apply_stretch_delimiters(ctx, &item)
     }
     if ok && ctx.cmd.kind == .Radical_Bar && ctx.command_index >= 0 {
         geometry := math_program_radical_construction(
@@ -2221,8 +2239,7 @@ math_program_item :: #force_inline proc(
     }
     if ok && ctx.cmd.kind == .Accent_Bar && ctx.cmd.accent_mode > 2 &&
         ctx.command_index >= 0 {
-        math_program_apply_glyph_accent(
-            ctx.cache, ctx.cmd, ctx.font_size, ctx.command_index, &item)
+        math_program_apply_glyph_accent(ctx, &item)
     }
     return item, ok
 }

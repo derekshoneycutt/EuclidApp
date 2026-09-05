@@ -33,6 +33,26 @@ function latex_source_for_program(program::Vector{MathPayloadOp})
     return join((latex_source_for_payload(op) for op in program), "")
 end
 
+"""Wrap rendered child text in the command represented by one accent payload."""
+function accent_payload_text(op::MathPayloadOp, child_text::AbstractString)
+    commands = Dict(
+        :overline => "\\overline", :underline => "\\underline",
+        :hat => "\\hat", :tilde => "\\tilde", :vec => "\\vec",
+        :dot => "\\dot", :ddot => "\\ddot", :bar => "\\bar",
+        :check => "\\check", :breve => "\\breve", :acute => "\\acute",
+        :grave => "\\grave", :ring => "\\mathring",
+        :overbrace => "\\overbrace", :underbrace => "\\underbrace")
+    return get(commands, op.accent_mode, "\\overline") * "{" * child_text * "}"
+end
+
+"""Wrap rendered child text in one radical payload and its optional degree."""
+function radical_payload_text(op::MathPayloadOp, child_text::AbstractString)
+    if !isempty(op.radical_index_text)
+        return "\\sqrt[" * op.radical_index_text * "]{" * child_text * "}"
+    end
+    return "\\sqrt{" * child_text * "}"
+end
+
 """Render one recursive payload op to plain-text fallback form."""
 function plain_text_for_recursive_payload(op::MathPayloadOp)
     if op.kind == MATH_OP_LARGE_OP_RECURSIVE
@@ -64,23 +84,11 @@ function plain_text_for_recursive_payload(op::MathPayloadOp)
     end
 
     if op.kind == MATH_OP_ACCENT_BAR_RECURSIVE
-        commands = Dict(
-            :overline => "\\overline", :underline => "\\underline",
-            :hat => "\\hat", :tilde => "\\tilde", :vec => "\\vec",
-            :dot => "\\dot", :ddot => "\\ddot", :bar => "\\bar",
-            :check => "\\check", :breve => "\\breve", :acute => "\\acute",
-            :grave => "\\grave", :ring => "\\mathring",
-            :overbrace => "\\overbrace", :underbrace => "\\underbrace")
-        command = get(commands, op.accent_mode, "\\overline") * "{"
-        return command * plain_text_for_program(op.children) * "}"
+        return accent_payload_text(op, plain_text_for_program(op.children))
     end
 
     if op.kind == MATH_OP_RADICAL_BAR_RECURSIVE
-        inner = plain_text_for_program(op.children)
-        if !isempty(op.radical_index_text)
-            return "\\sqrt[" * op.radical_index_text * "]{" * inner * "}"
-        end
-        return "\\sqrt{" * inner * "}"
+        return radical_payload_text(op, plain_text_for_program(op.children))
     end
 
     return op.text

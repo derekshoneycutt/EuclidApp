@@ -261,29 +261,14 @@ function parse_command_atom(
         return text_runs
     end
 
-    operator_runs = parse_operatorname_atom(command, tokens, idx)
+    operator_runs = parse_operatorname_atom!(command, tokens, idx)
     if !isnothing(operator_runs)
         return operator_runs
     end
 
-    glue_runs = parse_explicit_glue_command(command)
-    if !isnothing(glue_runs)
-        return glue_runs
-    end
-
-    fixed_runs = parse_fixed_math_command(command)
-    if !isnothing(fixed_runs)
-        return fixed_runs
-    end
-
-    alphabet_runs = parse_math_alphabet_atom(command, tokens, idx)
-    if !isnothing(alphabet_runs)
-        return alphabet_runs
-    end
-
-    structured_runs = parse_structured_math_command(command, tokens, idx)
-    if !isnothing(structured_runs)
-        return structured_runs
+    registered_runs = parse_registered_command_atom(command, tokens, idx)
+    if !isnothing(registered_runs)
+        return registered_runs
     end
 
     if haskey(OPERATOR_LIMIT_MODIFIER_SEGMENTS, command)
@@ -291,6 +276,21 @@ function parse_command_atom(
     end
 
     return normal_math_atom_runs(command)
+end
+
+"""Parse one registered glue, fixed, alphabet, or structured command."""
+function parse_registered_command_atom(
+    command::AbstractString,
+    tokens::Vector{LatexToken},
+    idx::Base.RefValue{Int})
+
+    glue_runs = parse_explicit_glue_command(command)
+    !isnothing(glue_runs) && return glue_runs
+    fixed_runs = parse_fixed_math_command(command)
+    !isnothing(fixed_runs) && return fixed_runs
+    alphabet_runs = parse_math_alphabet_atom(command, tokens, idx)
+    !isnothing(alphabet_runs) && return alphabet_runs
+    return parse_structured_math_command(command, tokens, idx)
 end
 
 """Parse supported explicit math-space commands into semantic glue runs."""
@@ -351,7 +351,7 @@ function consume_optional_asterisk!(
 end
 
 """Parse `\\operatorname` and its starred display-limit form as upright Op atoms."""
-function parse_operatorname_atom(
+function parse_operatorname_atom!(
     command::AbstractString,
     tokens::Vector{LatexToken},
     idx::Base.RefValue{Int})
@@ -369,6 +369,27 @@ function parse_operatorname_atom(
     text = parse_required_group_as_text(tokens, idx)
     role = starred ? :operatorname_star : :operatorname
     return [latex_atom_run(text, role, MATH_ATOM_OP)]
+end
+
+"""Parse one over/under annotation or brace command when recognized."""
+function parse_math_annotation_command(
+    command::AbstractString,
+    tokens::Vector{LatexToken},
+    idx::Base.RefValue{Int})
+
+    if command == "\\overset" || command == "\\underset"
+        annotation = parse_required_group_runs(tokens, idx)
+        base = parse_required_group_runs(tokens, idx)
+        run = command == "\\overset" ? latex_overset_run(annotation, base) :
+            latex_underset_run(annotation, base)
+        return [run]
+    end
+    if command == "\\overbrace" || command == "\\underbrace"
+        children = parse_required_group_runs(tokens, idx)
+        segment = command == "\\overbrace" ? :accent_overbrace : :accent_underbrace
+        return [latex_glyph_accent_run(segment, children)]
+    end
+    return nothing
 end
 
 """Parse one grouped mathematical alphabet command using its verified Unicode map."""
@@ -449,19 +470,7 @@ function parse_math_decoration_command(
         children = parse_math_argument_runs(tokens, idx)
         return [latex_glyph_accent_run(GLYPH_ACCENT_COMMANDS[command], children)]
     end
-    if command == "\\overset" || command == "\\underset"
-        annotation = parse_required_group_runs(tokens, idx)
-        base = parse_required_group_runs(tokens, idx)
-        run = command == "\\overset" ? latex_overset_run(annotation, base) :
-            latex_underset_run(annotation, base)
-        return [run]
-    end
-    if command == "\\overbrace" || command == "\\underbrace"
-        children = parse_required_group_runs(tokens, idx)
-        segment = command == "\\overbrace" ? :accent_overbrace : :accent_underbrace
-        return [latex_glyph_accent_run(segment, children)]
-    end
-    return nothing
+    return parse_math_annotation_command(command, tokens, idx)
 end
 
 """Parse structured math commands that produce child-run nodes."""
@@ -1385,6 +1394,13 @@ function serialize_matrix_like_run(run::LatexRun)
     return matrix_serialized_text(rows, cols, run.children, env_name, preamble)
 end
 
+"""Serialize an overline or underline run, or return nothing for other segments."""
+function latex_run_accent_text(run::LatexRun, child_text::AbstractString)
+    run.segment == :accent_over && return "\\overline{" * child_text * "}"
+    run.segment == :accent_under && return "\\underline{" * child_text * "}"
+    return nothing
+end
+
 """Serialize one non-matrix run segment into deterministic plain-text LaTeX form."""
 function latex_run_non_matrix_text(
     run::LatexRun, child_text::AbstractString, secondary_child_text::AbstractString)
@@ -1392,12 +1408,8 @@ function latex_run_non_matrix_text(
         star = run.role == :operatorname_star ? "*" : ""
         return "\\operatorname" * star * "{" * run.text * "}"
     end
-    if run.segment == :accent_over
-        return "\\overline{" * child_text * "}"
-    end
-    if run.segment == :accent_under
-        return "\\underline{" * child_text * "}"
-    end
+    accent_text = latex_run_accent_text(run, child_text)
+    accent_text !== nothing && return accent_text
     if run.segment == :radical_sqrt
         if !isempty(run.text)
             return "\\sqrt[" * run.text * "]{" * child_text * "}"
@@ -1516,14 +1528,6 @@ function parse_math_alphabet_command(
         write(output, glyph)
     end
     return String(take!(output)), !isempty(content)
-end
-
-"""Convert one LaTeX operator command name to its upright text form."""
-function command_to_text_operator(command::AbstractString)
-    if startswith(command, "\\")
-        return command[2:end]
-    end
-    return command
 end
 
 """Consume trailing super/subscript tokens and append mapped script runs."""
@@ -1845,23 +1849,11 @@ function latex_source_for_recursive_payload(op::MathPayloadOp)
     end
 
     if op.kind == MATH_OP_ACCENT_BAR_RECURSIVE
-        commands = Dict(
-            :overline => "\\overline", :underline => "\\underline",
-            :hat => "\\hat", :tilde => "\\tilde", :vec => "\\vec",
-            :dot => "\\dot", :ddot => "\\ddot", :bar => "\\bar",
-            :check => "\\check", :breve => "\\breve", :acute => "\\acute",
-            :grave => "\\grave", :ring => "\\mathring",
-            :overbrace => "\\overbrace", :underbrace => "\\underbrace")
-        command = get(commands, op.accent_mode, "\\overline") * "{"
-        return command * latex_source_for_program(op.children) * "}"
+        return accent_payload_text(op, latex_source_for_program(op.children))
     end
 
     if op.kind == MATH_OP_RADICAL_BAR_RECURSIVE
-        inner = latex_source_for_program(op.children)
-        if !isempty(op.radical_index_text)
-            return "\\sqrt[" * op.radical_index_text * "]{" * inner * "}"
-        end
-        return "\\sqrt{" * inner * "}"
+        return radical_payload_text(op, latex_source_for_program(op.children))
     end
 
     return latex_source_atom_text(op)

@@ -121,20 +121,9 @@ function over_under_payload_op(run::LatexRun)
         top, bottom, MathPayloadOp[])
 end
 
-"""Lift one payload op into a script-attach payload and set one script field."""
-function payload_op_with_script(op::MathPayloadOp, run::LatexRun)
-    sup_text = op.sup_text
-    sub_text = op.sub_text
-    superscript = op.secondary_children
-    subscript = op.tertiary_children
-    if run.segment == :script_sup
-        sup_text = script_payload_text(run.text)
-        superscript = math_payload_ops_for_runs(run.children)
-    elseif run.segment == :script_sub
-        sub_text = script_payload_text(run.text)
-        subscript = math_payload_ops_for_runs(run.children)
-    end
-
+"""Return a stacked brace payload when one script annotates a matching brace."""
+function brace_script_payload(op::MathPayloadOp, run::LatexRun,
+    superscript::Vector{MathPayloadOp}, subscript::Vector{MathPayloadOp})
     if op.kind == MATH_OP_ACCENT_BAR_RECURSIVE &&
         op.accent_mode == :overbrace && run.segment == :script_sup
         return MathPayloadOp(MATH_OP_STACK_RECURSIVE,
@@ -149,6 +138,20 @@ function payload_op_with_script(op::MathPayloadOp, run::LatexRun)
             OPERATOR_GROWTH_NONE, OPERATOR_LIMITS_STACKED, :math,
             op.atom_class, MATH_GLUE_NONE, [op], subscript, MathPayloadOp[])
     end
+    return nothing
+end
+
+"""Lift one payload op into a script-attach payload and set one script field."""
+function payload_op_with_script(op::MathPayloadOp, run::LatexRun)
+    sup_text = run.segment == :script_sup ? script_payload_text(run.text) : op.sup_text
+    sub_text = run.segment == :script_sub ? script_payload_text(run.text) : op.sub_text
+    superscript = run.segment == :script_sup ?
+        math_payload_ops_for_runs(run.children) : op.secondary_children
+    subscript = run.segment == :script_sub ?
+        math_payload_ops_for_runs(run.children) : op.tertiary_children
+
+    brace_payload = brace_script_payload(op, run, superscript, subscript)
+    brace_payload !== nothing && return brace_payload
 
     if op.kind == MATH_OP_SCRIPT_ATTACH_RECURSIVE ||
             op.kind == MATH_OP_LARGE_OP_RECURSIVE
@@ -172,6 +175,10 @@ function payload_op_with_script(op::MathPayloadOp, run::LatexRun)
         superscript,
         subscript)
 end
+
+"""Return true when a run segment represents a matrix-like payload."""
+is_matrix_payload_segment(segment::Symbol) =
+    segment == :matrix || segment == :array || segment in TABLE_SEMANTIC_SEGMENTS
 
 """Rebuild one payload op with updated recursive script branches."""
 function payload_op_rescripted(op::MathPayloadOp, sup_text::String, sub_text::String,
@@ -496,8 +503,7 @@ function payload_for_non_script_segment(run::LatexRun)
     if run.segment == :stack
         return stack_payload_op(run)
     end
-    if run.segment == :matrix || run.segment == :array ||
-        run.segment in TABLE_SEMANTIC_SEGMENTS
+    if is_matrix_payload_segment(run.segment)
         return matrix_payload_op(run)
     end
     return nothing

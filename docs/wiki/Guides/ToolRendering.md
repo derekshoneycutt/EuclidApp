@@ -82,7 +82,7 @@ stroke surface without claiming full world-space ray accuracy.
 
 ## Verification
 
-`src/view/elements_tests.odin` covers expanded bounds, fixed context capacity,
+`src/view/elements_test.odin` covers expanded bounds, fixed context capacity,
 cache-order depth gating, world-to-view basis projection, canonical view-depth
 ordering, arc parameter endpoints, attachment scaling, and stable leg slots.
 Runtime shader compilation is validated through the CMake `run` target. The

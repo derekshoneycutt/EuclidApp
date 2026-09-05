@@ -3,6 +3,11 @@ package dynview_math
 import app_core "../../core"
 import dyncore "../core"
 
+MATH_ACCENT_TEXTS :: [16]string{
+    "", "", "", "̂", "̃", "⃗", "̇", "̈",
+    "̄", "̌", "̆", "́", "̀", "̊", "⏞", "⏟",
+}
+
 Math_Shape_Request :: struct {
     generation: u64,
     text: string,
@@ -459,22 +464,11 @@ math_stretch_base_glyph :: proc(
 
 //   Return the semantic combining glyph text for one glyph-accent mode.
 math_accent_text :: proc(accent_mode: i32) -> string {
-    switch accent_mode {
-    case 3: return "̂"
-    case 4: return "̃"
-    case 5: return "⃗"
-    case 6: return "̇"
-    case 7: return "̈"
-    case 8: return "̄"
-    case 9: return "̌"
-    case 10: return "̆"
-    case 11: return "́"
-    case 12: return "̀"
-    case 13: return "̊"
-    case 14: return "⏞"
-    case 15: return "⏟"
+    if accent_mode < 0 || int(accent_mode) >= len(MATH_ACCENT_TEXTS) {
+        return ""
     }
-    return ""
+    texts := MATH_ACCENT_TEXTS
+    return texts[accent_mode]
 }
 
 //   Query one accent glyph's horizontal variants and assembly.

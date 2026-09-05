@@ -256,22 +256,10 @@ dynview_math_op_spans_valid :: #force_inline proc(
     return true
 }
 
-//   Return whether one bridge op carries a valid atom/glue combination.
-dynview_math_op_semantics_valid :: #force_inline proc(
+//   Validate fields whose meaning depends on the bridge operation kind.
+dynview_math_op_kind_semantics_valid :: #force_inline proc(
     op: Bridge_Dynview_Math_Op) -> bool {
 
-    if op.atom_class < BRIDGE_DYNVIEW_MATH_ATOM_NONE ||
-        op.atom_class > BRIDGE_DYNVIEW_MATH_ATOM_MAX ||
-        op.glue_kind < BRIDGE_DYNVIEW_MATH_GLUE_NONE ||
-        op.glue_kind > BRIDGE_DYNVIEW_MATH_GLUE_MAX {
-        return false
-    }
-    if op.glue_kind != BRIDGE_DYNVIEW_MATH_GLUE_NONE {
-        return op.atom_class == BRIDGE_DYNVIEW_MATH_ATOM_NONE
-    }
-    if op.atom_class == BRIDGE_DYNVIEW_MATH_ATOM_NONE {
-        return false
-    }
     if op.kind == BRIDGE_DYNVIEW_MATH_OP_LARGE_OP_RECURSIVE {
         return op.atom_class == BRIDGE_DYNVIEW_MATH_ATOM_OP &&
             op.large_op_kind > 0 &&
@@ -300,6 +288,25 @@ dynview_math_op_semantics_valid :: #force_inline proc(
     return op.large_op_kind == 0 &&
         op.operator_growth == BRIDGE_DYNVIEW_OPERATOR_GROWTH_NONE &&
         op.operator_limits == BRIDGE_DYNVIEW_OPERATOR_LIMITS_NONE
+}
+
+//   Return whether one bridge op carries a valid atom/glue combination.
+dynview_math_op_semantics_valid :: #force_inline proc(
+    op: Bridge_Dynview_Math_Op) -> bool {
+
+    if op.atom_class < BRIDGE_DYNVIEW_MATH_ATOM_NONE ||
+        op.atom_class > BRIDGE_DYNVIEW_MATH_ATOM_MAX ||
+        op.glue_kind < BRIDGE_DYNVIEW_MATH_GLUE_NONE ||
+        op.glue_kind > BRIDGE_DYNVIEW_MATH_GLUE_MAX {
+        return false
+    }
+    if op.glue_kind != BRIDGE_DYNVIEW_MATH_GLUE_NONE {
+        return op.atom_class == BRIDGE_DYNVIEW_MATH_ATOM_NONE
+    }
+    if op.atom_class == BRIDGE_DYNVIEW_MATH_ATOM_NONE {
+        return false
+    }
+    return dynview_math_op_kind_semantics_valid(op)
 }
 
 //   Require table descriptor references only on matrix operations.
@@ -421,6 +428,17 @@ dynview_import_direct_child :: proc(
     return {child_id, 0, 0, child_status}
 }
 
+//   Import an optional direct child, preserving an empty successful result.
+dynview_import_optional_child :: proc(
+    ctx: Dynview_Import_Context,
+    child_count: int) -> Dynview_Imported_Children {
+
+    if child_count <= 0 {
+        return {0, 0, 0, BRIDGE_STATUS_OK}
+    }
+    return dynview_import_direct_child(ctx, child_count)
+}
+
 //   Validate a matrix descriptor's cell count and import its direct child program.
 dynview_import_matrix_child :: proc(
     ctx: Dynview_Import_Context,
@@ -457,17 +475,10 @@ dynview_import_op_children :: proc(
         return dynview_import_direct_child(ctx, child_direct_count)
     case .Matrix:
         return dynview_import_matrix_child(ctx, op)
-    case .Frac:
-        return dynview_import_fraction_children(ctx, op)
-    case .Stack:
+    case .Frac, .Stack:
         return dynview_import_fraction_children(ctx, op)
     case .Stretch_Delimiter:
-        if child_direct_count <= 0 {
-            return Dynview_Imported_Children{0, 0, 0, BRIDGE_STATUS_OK}
-        }
-        child_id, child_status := dynview_import_child_program(ctx,
-            child_direct_count)
-        return Dynview_Imported_Children{child_id, 0, 0, child_status}
+        return dynview_import_optional_child(ctx, child_direct_count)
     case .Begin_Block, .End_Block, .Text_Run, .Math_Glyph_Run, .Math_Block,
         .Copyable_Text_Run, .Line_Break, .Divider,
         .Inline_Line, .Inline_Box, .Inline_Circle, .Inline_Filled_Box,

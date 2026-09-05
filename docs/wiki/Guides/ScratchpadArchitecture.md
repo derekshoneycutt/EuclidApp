@@ -82,7 +82,7 @@ animation changes.
 | Help, formatting, errors, and Dynview | `src/julia/scratchpad/presentation_help.jl` |
 | REPL-oriented Euclid drawing jobs | `src/julia/euclidrepl.jl` |
 | Julia behavioral tests | `src/julia/test/scratchpad_tests.jl` |
-| Odin editor/protocol tests | `tests/view/ui_tests.odin` |
+| Odin editor/protocol tests | `tests/view/ui_test.odin` |
 
 ## Execution And Ownership Model
 

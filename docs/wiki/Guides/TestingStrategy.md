@@ -29,7 +29,7 @@ The gate runs:
 
 Keep tests with the code they exercise:
 
-- Odin package tests are `*_tests.odin` files under `src/` and run with the
+- Odin package tests are `*_test.odin` files under `src/` and run with the
   all-packages Odin test command.
 - Julia tests live in `src/julia/test/` and are included by
   `src/julia/test/runtests.jl`.

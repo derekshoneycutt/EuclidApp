@@ -986,8 +986,19 @@ AnalysisSettings(
                 certainty=:definite,
                 response=Ignore),
             ReviewedAllocationPolicy(
+                "test-gif-capture-transition-state",
+                "src/view/gif_capture_test.odin",
+                "gif_capture_transitions_record_required_evidence",
+                :context,
+                "Large test fixture is destroyed by defer free in the test body.";
+                operation="new",
+                target="app_core.Euclid_General_State",
+                allocator_source="context.allocator",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
                 "test-view-scenario-actions-state",
-                "src/view/scenario_runtime_tests.odin",
+                "src/view/scenario_runtime_test.odin",
                 "scenario_runtime_actions_use_display_owned_state",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -997,7 +1008,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-view-scenario-capture-state",
-                "src/view/scenario_runtime_tests.odin",
+                "src/view/scenario_runtime_test.odin",
                 "scenario_runtime_waits_for_post_present_capture",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1057,7 +1068,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-view-scenario-selection-state",
-                "src/view/scenario_runtime_tests.odin",
+                "src/view/scenario_runtime_test.odin",
                 "scenario_animation_selection_requests_tree_reveal",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1067,7 +1078,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-view-scenario-selection-service",
-                "src/view/scenario_runtime_tests.odin",
+                "src/view/scenario_runtime_test.odin",
                 "scenario_animation_selection_requests_tree_reveal",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1077,7 +1088,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-view-scenario-reload-state",
-                "src/view/scenario_runtime_tests.odin",
+                "src/view/scenario_runtime_test.odin",
                 "scenario_reload_action_targets_next_runtime_generation",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1087,7 +1098,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-view-scenario-reload-service",
-                "src/view/scenario_runtime_tests.odin",
+                "src/view/scenario_runtime_test.odin",
                 "scenario_reload_action_targets_next_runtime_generation",
                 :implicit,
                 "Test service fixture is destroyed by defer free in the test body.";
@@ -1097,7 +1108,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-view-scenario-rejected-scratchpad-state",
-                "src/view/scenario_runtime_tests.odin",
+                "src/view/scenario_runtime_test.odin",
                 "scenario_rejected_scratchpad_submission_preserves_scroll_state",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1107,7 +1118,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-view-scratchpad-output-growth-state",
-                "src/view/ui/ui_tests.odin",
+                "src/view/ui/ui_test.odin",
                 "scratchpad_output_growth_repins_to_bottom",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1117,7 +1128,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-gif-encode-collect-gce-packed-bytes",
-                "src/files/gif_encode_tests.odin",
+                "src/files/gif_encode_test.odin",
                 "collect_gce_packed_bytes",
                 :temporary,
                 "Test helper buffer on the temporary allocator, freed by test teardown.";
@@ -1127,7 +1138,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-reserve-dead-low-prefers-dead",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "reserve_dead_low_particle_slot_prefers_dead_then_wraps",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1137,7 +1148,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-reserve-dead-ring-advances",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "reserve_dead_particle_slot_ring_advances",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1147,7 +1158,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-resolve-pair-no-collision",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "resolve_dust_pair_no_collision_keeps_state",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1157,7 +1168,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-resolve-pair-approach-impulse",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "resolve_dust_pair_overlap_with_approach_applies_impulse",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1167,7 +1178,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-resolve-pair-separating-skips",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "resolve_dust_pair_overlap_with_separating_velocity_skips_impulse",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1177,7 +1188,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-resolve-pair-exact-overlap",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "resolve_dust_pair_exact_overlap_uses_deterministic_separation",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1187,7 +1198,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-random-ranges-independent",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "particle_random_ranges_use_independent_seeded_generators",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1199,7 +1210,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-particles-resolve-collisions-rotates-samples",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "resolve_dust_collisions_rotates_dense_bucket_samples",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1209,7 +1220,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-reset-clears-runtime-state",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "reset_particles_clears_runtime_state_and_marks_all_slots_dead",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1219,7 +1230,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-reserve-dead-low-wraps",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "reserve_dead_low_particle_slot_wraps_when_all_slots_alive",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1229,7 +1240,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-emit-shapes-hide-burst",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "emit_shapes_hide_burst_spawns_dust_for_supported_shapes",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1239,7 +1250,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-particles-clamp-xy-bounds-bounces",
-                "src/particles/particles_tests.odin",
+                "src/particles/particles_test.odin",
                 "clamp_xy_bounds_index_bounces_particles_back_inside_bounds",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1249,7 +1260,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-shapes-clear-animation-data",
-                "src/shapes/system_tests.odin",
+                "src/shapes/system_test.odin",
                 "clear_animation_data_clears_animation_owned_slots",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1259,7 +1270,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-generation-slots-alternate",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "julia_interface_generation_slots_are_stable_and_alternate",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1268,7 +1279,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-snapshot-rejects-recycled-interface",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_rejects_recycled_interface_pointer_from_old_generation",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1279,7 +1290,7 @@ AnalysisSettings(
                 maximum_matches=3),
             ReviewedAllocationPolicy(
                 "test-dynview-batch-commits-point-positions",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scene_command_batch_commits_point_positions_in_order",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1290,7 +1301,7 @@ AnalysisSettings(
                 maximum_matches=4),
             ReviewedAllocationPolicy(
                 "test-dynview-batch-rejects-invalid-tail",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scene_command_batch_rejects_invalid_tail_atomically",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1301,7 +1312,7 @@ AnalysisSettings(
                 maximum_matches=4),
             ReviewedAllocationPolicy(
                 "test-dynview-batch-rejects-overflow-stale",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scene_command_batch_rejects_overflow_and_stale_animation",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1312,7 +1323,7 @@ AnalysisSettings(
                 maximum_matches=5),
             ReviewedAllocationPolicy(
                 "test-dynview-tick-reject-reason-classifies",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "animation_tick_reject_reason_classifies_stale_generation_and_sequence",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1323,7 +1334,7 @@ AnalysisSettings(
                 maximum_matches=4),
             ReviewedAllocationPolicy(
                 "test-dynview-batch-defers-point-properties",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scene_command_batch_defers_general_point_properties_until_commit",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1334,7 +1345,7 @@ AnalysisSettings(
                 maximum_matches=4),
             ReviewedAllocationPolicy(
                 "test-dynview-batch-rejects-implicit-compass",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scene_command_batch_rejects_invalid_implicit_compass_handle_atomically",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1345,7 +1356,7 @@ AnalysisSettings(
                 maximum_matches=4),
             ReviewedAllocationPolicy(
                 "test-dynview-query-snapshot-immutable",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "animation_query_snapshot_is_immutable_during_worker_tick",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1356,7 +1367,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-tick-rejects-stale-generation",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "animation_tick_rejects_stale_generation_and_sequence",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1367,7 +1378,7 @@ AnalysisSettings(
                 maximum_matches=4),
             ReviewedAllocationPolicy(
                 "test-dynview-tick-coalescing-caps-backlog",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "animation_tick_coalescing_caps_backlog_without_queue_growth",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1376,7 +1387,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-runtime-failure-event-identity",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "julia_runtime_failure_event_records_request_identity",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1385,7 +1396,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-runtime-terminal-failure",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "julia_runtime_terminal_failure_does_not_report_stopped",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1394,7 +1405,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-runtime-diagnostics-failure",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "julia_runtime_diagnostics_report_failure_and_saturation",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1403,7 +1414,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-reload-failure-records-revision",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "julia_reload_failure_records_package_revision",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1412,7 +1423,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-snapshot-copy-preserves-spans",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_copy_preserves_recursive_math_spans",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1423,7 +1434,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-snapshot-validation-rejects",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_validation_rejects_incomplete_streams",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1432,7 +1443,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-completed-snapshot-found",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "completed_view_snapshot_is_found_without_event_index",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1441,7 +1452,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-newest-snapshot-supersedes",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "newest_completed_view_snapshot_supersedes_older_completion",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1450,7 +1461,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-stale-snapshot-clears-commands",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "stale_view_snapshot_clears_previous_animation_commands",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1461,7 +1472,7 @@ AnalysisSettings(
                 maximum_matches=5),
             ReviewedAllocationPolicy(
                 "test-dynview-text-span-script-attach-bounds",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_text_span_and_script_attach_helpers_respect_bounds",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1470,7 +1481,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-layout-prepare-style-placement",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_layout_prepare_style_placement_forces_line_break_and_indent",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1479,7 +1490,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-layout-push-item-metadata",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_layout_push_item_records_block_and_column_metadata",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1488,7 +1499,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-track-font-cell-metrics",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_track_font_retains_canonical_cell_metrics",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1497,7 +1508,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-layout-context-grid-metrics",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_layout_context_derives_canonical_grid_metrics",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1508,7 +1519,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-layout-canonical-columns",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_layout_columns_use_canonical_cell_width",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1517,7 +1528,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-layout-mixed-grid-rows",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_layout_mixed_line_aggregates_grid_rows",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1526,7 +1537,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-layout-paragraph-grid-rows",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_layout_paragraph_spacing_rounds_to_rows",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1537,7 +1548,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-layout-metrics-grid-rows",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_layout_metrics_derive_from_rows",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1548,7 +1559,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-math-block-text-baseline",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_math_block_aligns_with_text_baseline",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1557,7 +1568,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-line-ink-overflow-allowance",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_line_permits_ink_overflow_into_neighbor_leading",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1566,7 +1577,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-line-ink-overflow-reserves-row",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_line_reserves_row_when_ink_exceeds_allowance",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1575,7 +1586,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-layout-consume-text-run-wraps",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_layout_consume_text_run_wraps_and_places_segments",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1586,7 +1597,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-measure-math-aggregates-children",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_measure_math_program_aggregates_child_metrics",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1597,7 +1608,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-measure-math-rejects-invalid",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_measure_math_program_rejects_invalid_shapes",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1608,7 +1619,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-measure-math-sums-widths",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_measure_math_program_sums_multiple_command_widths",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1619,7 +1630,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-dynview-reset-cache-clears-layout",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_reset_cache_clears_layout_state",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1628,7 +1639,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-inline-line-grid-cache",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_inline_line_uses_intrinsic_grid_embedding",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1638,7 +1649,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-scratchpad-grid-scroll-runtime",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_scratchpad_scroll_metrics_use_grid_rows",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1648,7 +1659,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-copy-hit-grid-cache",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_copy_hit_target_uses_grid_row_bounds",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1658,7 +1669,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-inline-shapes-grid-cache",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_inline_shapes_use_centered_grid_placement",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1668,7 +1679,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-math-padding-placement-cache",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_math_block_placement_includes_visual_padding",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1680,7 +1691,7 @@ AnalysisSettings(
                 maximum_matches=1),
             ReviewedAllocationPolicy(
                 "test-dynview-math-overflow-placement-cache",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "dynview_math_block_overflow_is_symmetric_and_explicit",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1692,7 +1703,7 @@ AnalysisSettings(
                 maximum_matches=1),
             ReviewedAllocationPolicy(
                 "test-dynview-publication-state",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_publication_records_animation_generation",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1702,7 +1713,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-publication-service",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_publication_records_animation_generation",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1712,7 +1723,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-publication-animation",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_publication_records_animation_generation",
                 :implicit,
                 "Large test fixture is destroyed by defer free in the test body.";
@@ -1722,7 +1733,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-invalid-publication-state",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scratchpad_completion_waits_for_valid_view_publication",
                 :implicit,
                 "The test host state is released by its deferred free.";
@@ -1732,7 +1743,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-invalid-publication-service",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scratchpad_completion_waits_for_valid_view_publication",
                 :implicit,
                 "The test service is released by its deferred free.";
@@ -1742,7 +1753,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-evidence-pressure-state",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scratchpad_completion_requires_current_complete_evidence",
                 :implicit,
                 "The test host state is released by its deferred free.";
@@ -1752,7 +1763,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-watermark-service",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "scratchpad_completion_watermark_clears_at_lifecycle_boundary",
                 :implicit,
                 "The test service is released by its deferred free.";
@@ -1762,7 +1773,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-malformed-span-snapshot",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_validation_rejects_all_malformed_text_spans",
                 :implicit,
                 "The test snapshot and its arena are released by deferred cleanup.";
@@ -1772,7 +1783,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-fallback-lifetime-state",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_fallback_lifetime_survives_stale_and_repeated_publication",
                 :implicit,
                 "The test host state is released by its deferred free.";
@@ -1782,7 +1793,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-dynview-fallback-lifetime-service",
-                "src/view/dynview_tests.odin",
+                "src/view/dynview_test.odin",
                 "view_snapshot_fallback_lifetime_survives_stale_and_repeated_publication",
                 :implicit,
                 "The test service is released by its deferred free.";
@@ -1872,7 +1883,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-gif-capture-status-note-truncation",
-                "src/view/gif_capture_tests.odin",
+                "src/view/gif_capture_test.odin",
                 "clear_and_set_gif_status_note_handles_truncation",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1882,7 +1893,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-gif-capture-last-path-truncation",
-                "src/view/gif_capture_tests.odin",
+                "src/view/gif_capture_test.odin",
                 "clear_and_set_last_gif_path_handles_truncation",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1892,7 +1903,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-gif-capture-cycle-boundary-consumes-once",
-                "src/view/gif_capture_tests.odin",
+                "src/view/gif_capture_test.odin",
                 "gif_capture_consume_cycle_boundary_consumes_once_per_generation",
                 :implicit,
                 "Test fixture destroyed by defer free in the test body.";
@@ -1902,7 +1913,7 @@ AnalysisSettings(
                 response=Ignore),
             ReviewedAllocationPolicy(
                 "test-gif-capture-batch-splits-hide-points",
-                "src/view/gif_capture_tests.odin",
+                "src/view/gif_capture_test.odin",
                 "scene_command_batch_splits_large_hide_point_batches",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1913,7 +1924,7 @@ AnalysisSettings(
                 maximum_matches=4),
             ReviewedAllocationPolicy(
                 "test-sim-executor-fixed-step-advances-identity",
-                "src/view/simulation_executor_tests.odin",
+                "src/view/simulation_executor_test.odin",
                 "deterministic_fixed_step_advances_identity_after_worker_join",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1924,7 +1935,7 @@ AnalysisSettings(
                 maximum_matches=3),
             ReviewedAllocationPolicy(
                 "test-sim-executor-fixed-step-emits-snapshot",
-                "src/view/simulation_executor_tests.odin",
+                "src/view/simulation_executor_test.odin",
                 "deterministic_fixed_step_emits_post_join_checkpoint_snapshot",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1935,7 +1946,7 @@ AnalysisSettings(
                 maximum_matches=4),
             ReviewedAllocationPolicy(
                 "test-sim-executor-parallel-step-joins-updates",
-                "src/view/simulation_executor_tests.odin",
+                "src/view/simulation_executor_test.odin",
                 "parallel_simulation_step_joins_particle_and_constraint_updates",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1946,7 +1957,7 @@ AnalysisSettings(
                 maximum_matches=3),
             ReviewedAllocationPolicy(
                 "test-sim-executor-frame-prep-joins-caches",
-                "src/view/simulation_executor_tests.odin",
+                "src/view/simulation_executor_test.odin",
                 "parallel_frame_preparation_joins_shape_and_dynview_cache_updates",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
@@ -1957,7 +1968,7 @@ AnalysisSettings(
                 maximum_matches=2),
             ReviewedAllocationPolicy(
                 "test-sim-executor-dynview-failure-fallback",
-                "src/view/simulation_executor_tests.odin",
+                "src/view/simulation_executor_test.odin",
                 "dynview_cache_arena_failed_rebuild_preserves_fallback",
                 :implicit,
                 "Test fixtures destroyed by defer free in the test body.";
