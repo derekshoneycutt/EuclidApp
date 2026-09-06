@@ -55,6 +55,7 @@ DYNVIEW_MAX_SHAPED_RUNS :: DYNVIEW_MAX_MATH_COMMANDS
 FONT_KEY_COUNT :: int(Font_Key.Math_Regular) + 1
 FONT_SOURCE_PATH_CAPACITY :: 1024
 FONT_GLYPH_PAGE_CAPACITY :: 32
+FONT_SEED_CODEPOINT_CAPACITY :: 512
 
 Vector2 :: rl.Vector2
 Vector3 :: rl.Vector3
@@ -1851,7 +1852,7 @@ Font_Prepare_Task :: struct {
     path_storage: [1024]u8,
     path_length: int,
     pixel_size: i32,
-    codepoints: [256]rune,
+    codepoints: [FONT_SEED_CODEPOINT_CAPACITY]rune,
     codepoint_count: i32,
     glyph_ids: [256]u32,
     glyph_id_count: i32,
@@ -2123,7 +2124,9 @@ Euclid_General_State :: struct {
     current_delta_time : f32,
     accumulator : f32,
 
-    animation_values : Animation_Value_Store,
+    animation_memory: Animation_Memory,
+    animation_values: Animation_Value_Store,
+    dynview_documents: Dynview_Document_Store,
 }
 
 Euclid_Run_Settings :: struct {

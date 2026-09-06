@@ -1,0 +1,3749 @@
+grammar_version = 24
+schema_version = 1
+semantic_profile = 0
+
+[[cases]]
+mode = "math"
+name = "atom_spacing"
+outcome = "success"
+plain_text = "a+b=c, -a+b"
+root_style = "display"
+source = "a+b=c,\\;-a+b"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "a"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "b"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 4
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "="
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "c"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 7
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = ","
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 0
+    children = []
+    glue_kind = 1
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = " "
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "-"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "a"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "b"
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "scripts"
+outcome = "success"
+plain_text = "{x}^{2}_{i}+{V}_{A}"
+root_style = "display"
+source = "x_i^2+V_A"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    glue_kind = 0
+    kind = 5
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    style_role = "math_italic"
+    sub_text = "i"
+    sup_text = "2"
+    text = "x"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "x"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "2"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "i"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    glue_kind = 0
+    kind = 5
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = "A"
+    sup_text = ""
+    text = "V"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "V"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "A"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+[[cases]]
+mode = "math"
+name = "fractions"
+outcome = "success"
+plain_text = "{a+b}/{c}"
+root_style = "display"
+source = "\\frac{a+b}{c}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 7
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "{a+b}/{c}"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "a"
+
+            [cases.program.children.table_descriptor]
+            present = false
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 3
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "+"
+
+            [cases.program.children.table_descriptor]
+            present = false
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "b"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "c"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "operators"
+outcome = "success"
+plain_text = "∑_{i=1}^{n}i+∫_{0}^{1}f(x) dx"
+root_style = "display"
+source = "\\sum_{i=1}^{n}i+\\int_0^1f(x)\\,dx"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 2
+    children = []
+    glue_kind = 0
+    kind = 6
+    large_op_kind = 1
+    operator_growth = 1
+    operator_limits = 2
+    radical_index_text = ""
+    radical_mode = "none"
+    style_role = "math"
+    sub_text = "i=1"
+    sup_text = "n"
+    text = "∑"
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "n"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "i"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 4
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "="
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "1"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "i"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 2
+    children = []
+    glue_kind = 0
+    kind = 6
+    large_op_kind = 3
+    operator_growth = 1
+    operator_limits = 1
+    radical_index_text = ""
+    radical_mode = "none"
+    style_role = "math"
+    sub_text = "0"
+    sup_text = "1"
+    text = "∫"
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "1"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "0"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "f"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 5
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "("
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "x"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 6
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = ")"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 0
+    children = []
+    glue_kind = 5
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = " "
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "dx"
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "extended_operators"
+outcome = "success"
+plain_text = "∮_{C}f+∬_{D}g+∐_{i}{A}_{i}+⋃_{i}{S}_{i}"
+root_style = "display"
+source = "\\oint_C f+\\iint_D g+\\coprod_i A_i+\\bigcup_i S_i"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 2
+    children = []
+    glue_kind = 0
+    kind = 6
+    large_op_kind = 3
+    operator_growth = 1
+    operator_limits = 1
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = "C"
+    sup_text = ""
+    text = "∮"
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "C"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "f"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 2
+    children = []
+    glue_kind = 0
+    kind = 6
+    large_op_kind = 3
+    operator_growth = 1
+    operator_limits = 1
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = "D"
+    sup_text = ""
+    text = "∬"
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "D"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "g"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 2
+    children = []
+    glue_kind = 0
+    kind = 6
+    large_op_kind = 2
+    operator_growth = 1
+    operator_limits = 2
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = "i"
+    sup_text = ""
+    text = "∐"
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "i"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    glue_kind = 0
+    kind = 5
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = "i"
+    sup_text = ""
+    text = "A"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "A"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "i"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 2
+    children = []
+    glue_kind = 0
+    kind = 6
+    large_op_kind = 5
+    operator_growth = 1
+    operator_limits = 2
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = "i"
+    sup_text = ""
+    text = "⋃"
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "i"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    glue_kind = 0
+    kind = 5
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = "i"
+    sup_text = ""
+    text = "S"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "S"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+
+        [[cases.program.tertiary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "i"
+
+            [cases.program.tertiary_children.table_descriptor]
+            present = false
+[[cases]]
+mode = "math"
+name = "radicals"
+outcome = "success"
+plain_text = "\\sqrt[n]{x+1}"
+root_style = "display"
+source = "\\sqrt[n]{x+1}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    glue_kind = 0
+    kind = 4
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = "n"
+    radical_mode = "nthroot"
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "x+1"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "x"
+
+            [cases.program.children.table_descriptor]
+            present = false
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 3
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "+"
+
+            [cases.program.children.table_descriptor]
+            present = false
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "1"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "n"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "delimiters"
+outcome = "success"
+plain_text = "\\left({a}/{b}\\right)"
+root_style = "display"
+source = "\\left(\\frac{a}{b}\\right)"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 8
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = "("
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = ")"
+    tertiary_children = []
+    text = "\\left({a}/{b}\\right)"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 8
+        glue_kind = 0
+        kind = 7
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        style_role = "math"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "{a}/{b}"
+
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "a"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+
+            [[cases.program.children.secondary_children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "b"
+
+                [cases.program.children.secondary_children.table_descriptor]
+                present = false
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "matrices"
+outcome = "success"
+plain_text = "\\left[\\begin{matrix}a&b\\\\c&d\\end{matrix}\\right]"
+root_style = "display"
+source = "\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 8
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = "["
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = "]"
+    tertiary_children = []
+    text = "\\left[\\begin{matrix}a&b\\\\c&d\\end{matrix}\\right]"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 8
+        glue_kind = 0
+        kind = 9
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = "2"
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math"
+        sub_text = ""
+        sup_text = "2"
+        tertiary_children = []
+        text = "\\begin{matrix}a&b\\\\c&d\\end{matrix}"
+
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "a"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "b"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "c"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "d"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "matrix_wrappers"
+outcome = "success"
+plain_text = "\\left\\{\\begin{matrix}a&b\\\\c&d\\end{matrix}\\right\\}+\\left\\|\\begin{matrix}1&0\\\\0&1\\end{matrix}\\right\\|"
+root_style = "display"
+source = "\\begin{Bmatrix}a&b\\\\c&d\\end{Bmatrix}+\\begin{Vmatrix}1&0\\\\0&1\\end{Vmatrix}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 8
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = "\\{"
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = "\\}"
+    tertiary_children = []
+    text = "\\left\\{\\begin{matrix}a&b\\\\c&d\\end{matrix}\\right\\}"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 8
+        glue_kind = 0
+        kind = 9
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = "2"
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math"
+        sub_text = ""
+        sup_text = "2"
+        tertiary_children = []
+        text = "\\begin{matrix}a&b\\\\c&d\\end{matrix}"
+
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "a"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "b"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "c"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "d"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 8
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = "\\|"
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = "\\|"
+    tertiary_children = []
+    text = "\\left\\|\\begin{matrix}1&0\\\\0&1\\end{matrix}\\right\\|"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 8
+        glue_kind = 0
+        kind = 9
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = "2"
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math"
+        sub_text = ""
+        sup_text = "2"
+        tertiary_children = []
+        text = "\\begin{matrix}1&0\\\\0&1\\end{matrix}"
+
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "1"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "0"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "0"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "1"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "bars"
+outcome = "success"
+plain_text = "\\overline{AB}+\\underline{CD}"
+root_style = "display"
+source = "\\overline{AB}+\\underline{CD}"
+
+    [[cases.program]]
+    accent_mode = "overline"
+    atom_class = 1
+    glue_kind = 0
+    kind = 3
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "AB"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "AB"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 3
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "+"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "underline"
+    atom_class = 1
+    glue_kind = 0
+    kind = 3
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "CD"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "CD"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "nesting"
+outcome = "success"
+plain_text = "{1}/{1+{1}/{{x}^{2}}}"
+root_style = "display"
+source = "\\frac{1}{1+\\frac{1}{x^2}}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 7
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "{1}/{1+{1}/{{x}^{2}}}"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "1"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "1"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 3
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "+"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 8
+        glue_kind = 0
+        kind = 7
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        style_role = "math"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "{1}/{{x}^{2}}"
+
+            [[cases.program.secondary_children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "1"
+
+                [cases.program.secondary_children.children.table_descriptor]
+                present = false
+
+            [[cases.program.secondary_children.secondary_children]]
+            accent_mode = "none"
+            atom_class = 1
+            glue_kind = 0
+            kind = 5
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = "2"
+            tertiary_children = []
+            text = "x"
+
+                [[cases.program.secondary_children.secondary_children.children]]
+                accent_mode = "none"
+                atom_class = 1
+                children = []
+                glue_kind = 0
+                kind = 2
+                large_op_kind = 0
+                operator_growth = 0
+                operator_limits = 0
+                radical_index_text = ""
+                radical_mode = "none"
+                secondary_children = []
+                style_role = "math_italic"
+                sub_text = ""
+                sup_text = ""
+                tertiary_children = []
+                text = "x"
+
+                    [cases.program.secondary_children.secondary_children.children.table_descriptor]
+                    present = false
+
+                [[cases.program.secondary_children.secondary_children.secondary_children]]
+                accent_mode = "none"
+                atom_class = 1
+                children = []
+                glue_kind = 0
+                kind = 2
+                large_op_kind = 0
+                operator_growth = 0
+                operator_limits = 0
+                radical_index_text = ""
+                radical_mode = "none"
+                secondary_children = []
+                style_role = "math_upright"
+                sub_text = ""
+                sup_text = ""
+                tertiary_children = []
+                text = "2"
+
+                    [cases.program.secondary_children.secondary_children.secondary_children.table_descriptor]
+                    present = false
+
+                [cases.program.secondary_children.secondary_children.table_descriptor]
+                present = false
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "fallback"
+outcome = "recoverable"
+plain_text = "\\unsupportedreadable"
+root_style = "display"
+source = "\\unsupported{readable}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "\\"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "unsupportedreadable"
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "rich_table"
+outcome = "success"
+plain_text = "\\begin{array}{||c|c||}a&b\\\\c&d\\end{array}"
+root_style = "display"
+source = "\\begin{array}{||c|c||}\\hline a&b\\\\[1.5em]c&d\\\\[-2pt]\\hline\\hline\\end{array}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 9
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = "2"
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = "||c|c||"
+    sup_text = "2"
+    tertiary_children = []
+    text = "\\begin{array}{||c|c||}a&b\\\\c&d\\end{array}"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "a"
+
+            [cases.program.children.table_descriptor]
+            present = false
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "b"
+
+            [cases.program.children.table_descriptor]
+            present = false
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "c"
+
+            [cases.program.children.table_descriptor]
+            present = false
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "d"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        alignments = ["c", "c"]
+        cell_style = "text"
+        horizontal_rule_counts = [1, 0, 2]
+        present = true
+        row_spacing = "matrix"
+        vertical_rule_counts = [2, 1, 2]
+
+            [[cases.program.table_descriptor.boundary_gaps]]
+            unit = "default"
+            value = 0.0
+            [[cases.program.table_descriptor.boundary_gaps]]
+            unit = "default"
+            value = 0.0
+            [[cases.program.table_descriptor.boundary_gaps]]
+            unit = "default"
+            value = 0.0
+
+            [[cases.program.table_descriptor.row_extra_gaps]]
+            unit = "em"
+            value = 1.5
+            [[cases.program.table_descriptor.row_extra_gaps]]
+            unit = "pt"
+            value = -2.0
+[[cases]]
+mode = "math"
+name = "unsupported_command"
+outcome = "recoverable"
+plain_text = "\\unsupportedreadable"
+root_style = "display"
+source = "\\unsupported{readable}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_upright"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "\\"
+
+        [cases.program.table_descriptor]
+        present = false
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "unsupportedreadable"
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "incomplete_fraction"
+outcome = "recoverable"
+plain_text = "{a}/{}"
+root_style = "display"
+source = "\\frac{a}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 7
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "{a}/{}"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "a"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "ragged_matrix"
+outcome = "recoverable"
+plain_text = "\\begin"
+root_style = "display"
+source = "\\begin{matrix}a&b\\\\c\\end{matrix}"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "\\begin"
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "unclosed_script"
+outcome = "recoverable"
+plain_text = "x"
+root_style = "display"
+source = "x^{"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "x"
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "unclosed_delimiter"
+outcome = "recoverable"
+plain_text = "\\left(x\\right."
+root_style = "display"
+source = "\\left(x"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    children = []
+    glue_kind = 0
+    kind = 2
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "\\left(x\\right."
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "undelimited_display"
+outcome = "success"
+plain_text = "{x}^{2}"
+root_style = "display"
+source = "x^2"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    glue_kind = 0
+    kind = 5
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = "2"
+    tertiary_children = []
+    text = "x"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "x"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "2"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "dollar_inline"
+outcome = "success"
+plain_text = "{x}^{2}"
+root_style = "text"
+source = "x^2"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 10
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "text"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "{x}^{2}"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        glue_kind = 0
+        kind = 5
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = "2"
+        tertiary_children = []
+        text = "x"
+
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "x"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+
+            [[cases.program.children.secondary_children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "2"
+
+                [cases.program.children.secondary_children.table_descriptor]
+                present = false
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "paren_inline"
+outcome = "success"
+plain_text = "{x}^{2}"
+root_style = "text"
+source = "x^2"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 8
+    glue_kind = 0
+    kind = 10
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "text"
+    secondary_children = []
+    style_role = "math"
+    sub_text = ""
+    sup_text = ""
+    tertiary_children = []
+    text = "{x}^{2}"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        glue_kind = 0
+        kind = 5
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = "2"
+        tertiary_children = []
+        text = "x"
+
+            [[cases.program.children.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "x"
+
+                [cases.program.children.children.table_descriptor]
+                present = false
+
+            [[cases.program.children.secondary_children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "2"
+
+                [cases.program.children.secondary_children.table_descriptor]
+                present = false
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "double_dollar_display"
+outcome = "success"
+plain_text = "{x}^{2}"
+root_style = "display"
+source = "x^2"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    glue_kind = 0
+    kind = 5
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = "2"
+    tertiary_children = []
+    text = "x"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "x"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "2"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "math"
+name = "bracket_display"
+outcome = "success"
+plain_text = "{x}^{2}"
+root_style = "display"
+source = "x^2"
+
+    [[cases.program]]
+    accent_mode = "none"
+    atom_class = 1
+    glue_kind = 0
+    kind = 5
+    large_op_kind = 0
+    operator_growth = 0
+    operator_limits = 0
+    radical_index_text = ""
+    radical_mode = "none"
+    style_role = "math_italic"
+    sub_text = ""
+    sup_text = "2"
+    tertiary_children = []
+    text = "x"
+
+        [[cases.program.children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_italic"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "x"
+
+            [cases.program.children.table_descriptor]
+            present = false
+
+        [[cases.program.secondary_children]]
+        accent_mode = "none"
+        atom_class = 1
+        children = []
+        glue_kind = 0
+        kind = 2
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        secondary_children = []
+        style_role = "math_upright"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "2"
+
+            [cases.program.secondary_children.table_descriptor]
+            present = false
+
+        [cases.program.table_descriptor]
+        present = false
+[[cases]]
+mode = "document"
+name = "styled_mixed"
+outcome = "success"
+source = "\\textbf{Title} plain \\textit{italic} and $x^2$."
+
+    [[cases.runs]]
+    font_flags = 36
+    kind = "text"
+    text = "Title"
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " plain "
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 5
+    kind = "text"
+    text = "italic"
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " and "
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "math_inline"
+    root_style = "text"
+    text = "x^2"
+
+        [cases.runs.color]
+        present = false
+
+        [[cases.runs.program]]
+        accent_mode = "none"
+        atom_class = 8
+        glue_kind = 0
+        kind = 10
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "text"
+        secondary_children = []
+        style_role = "math"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "{x}^{2}"
+
+            [[cases.runs.program.children]]
+            accent_mode = "none"
+            atom_class = 1
+            glue_kind = 0
+            kind = 5
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = "2"
+            tertiary_children = []
+            text = "x"
+
+                [[cases.runs.program.children.children]]
+                accent_mode = "none"
+                atom_class = 1
+                children = []
+                glue_kind = 0
+                kind = 2
+                large_op_kind = 0
+                operator_growth = 0
+                operator_limits = 0
+                radical_index_text = ""
+                radical_mode = "none"
+                secondary_children = []
+                style_role = "math_italic"
+                sub_text = ""
+                sup_text = ""
+                tertiary_children = []
+                text = "x"
+
+                    [cases.runs.program.children.children.table_descriptor]
+                    present = false
+
+                [[cases.runs.program.children.secondary_children]]
+                accent_mode = "none"
+                atom_class = 1
+                children = []
+                glue_kind = 0
+                kind = 2
+                large_op_kind = 0
+                operator_growth = 0
+                operator_limits = 0
+                radical_index_text = ""
+                radical_mode = "none"
+                secondary_children = []
+                style_role = "math_upright"
+                sub_text = ""
+                sup_text = ""
+                tertiary_children = []
+                text = "2"
+
+                    [cases.runs.program.children.secondary_children.table_descriptor]
+                    present = false
+
+                [cases.runs.program.children.table_descriptor]
+                present = false
+
+            [cases.runs.program.table_descriptor]
+            present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = "."
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+[[cases]]
+mode = "document"
+name = "colored_nested"
+outcome = "success"
+source = "\\textcolor{julia_blue}{outer \\textbf{bold}} default"
+
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = "outer "
+
+        [cases.runs.color]
+        present = true
+        rgba = [64, 99, 216, 255]
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 36
+    kind = "text"
+    text = "bold"
+
+        [cases.runs.color]
+        present = true
+        rgba = [64, 99, 216, 255]
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " default"
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+[[cases]]
+mode = "document"
+name = "shapes"
+outcome = "success"
+source = "\\euclidpoint[color=steelblue,size=1] \\euclidline[length=4,thickness=2] \\euclidcircle[color=khaki3,size=2,filled] \\euclidbox[width=3,height=2,thickness=1,filled=false]"
+
+    [[cases.runs]]
+    font_flags = 4
+    kind = "shape"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        end_angle = 0.0
+        filled = true
+        height = 1.0
+        kind = "point"
+        present = true
+        start_angle = 0.0
+        thickness = 1.0
+        width = 1.0
+
+            [cases.runs.shape.arc_color]
+            present = false
+
+            [cases.runs.shape.color]
+            present = true
+            rgba = [70, 130, 180, 255]
+
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+
+            [cases.runs.shape.fill_color]
+            present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " "
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "shape"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        end_angle = 0.0
+        filled = false
+        height = 1.0
+        kind = "line"
+        present = true
+        start_angle = 0.0
+        thickness = 2.0
+        width = 4.0
+
+            [cases.runs.shape.arc_color]
+            present = false
+
+            [cases.runs.shape.color]
+            present = false
+
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+
+            [cases.runs.shape.fill_color]
+            present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " "
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "shape"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        end_angle = 0.0
+        filled = true
+        height = 1.0
+        kind = "circle"
+        present = true
+        start_angle = 0.0
+        thickness = 1.0
+        width = 2.0
+
+            [cases.runs.shape.arc_color]
+            present = false
+
+            [cases.runs.shape.color]
+            present = true
+            rgba = [205, 198, 115, 255]
+
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+
+            [cases.runs.shape.fill_color]
+            present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " "
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "shape"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        end_angle = 0.0
+        filled = false
+        height = 2.0
+        kind = "box"
+        present = true
+        start_angle = 0.0
+        thickness = 1.0
+        width = 3.0
+
+            [cases.runs.shape.arc_color]
+            present = false
+
+            [cases.runs.shape.color]
+            present = false
+
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+
+            [cases.runs.shape.fill_color]
+            present = false
+[[cases]]
+mode = "document"
+name = "line_breaks"
+outcome = "success"
+source = """first\\\\\n\nsecond"""
+
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = "first"
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "line_break"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "line_break"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = "second"
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+[[cases]]
+mode = "document"
+name = "prime_document"
+outcome = "success"
+source = """\\textbf{Euclid} \\textit{document} $x_1^2 \\in \\mathbb{R}$\n\n\\euclidpoint[color=steelblue,size=1] \\euclidline[color=steelblue,length=3,thickness=2]\n\n$$\\frac{a+b}{\\sqrt{c}}$$"""
+
+    [[cases.runs]]
+    font_flags = 36
+    kind = "text"
+    text = "Euclid"
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " "
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 5
+    kind = "text"
+    text = "document"
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " "
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "math_inline"
+    root_style = "text"
+    text = "x_1^2 \\in \\mathbb{R}"
+
+        [cases.runs.color]
+        present = false
+
+        [[cases.runs.program]]
+        accent_mode = "none"
+        atom_class = 8
+        glue_kind = 0
+        kind = 10
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "text"
+        secondary_children = []
+        style_role = "math"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "{x}^{2}_{1}∈ℝ"
+
+            [[cases.runs.program.children]]
+            accent_mode = "none"
+            atom_class = 1
+            glue_kind = 0
+            kind = 5
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            style_role = "math_italic"
+            sub_text = "1"
+            sup_text = "2"
+            text = "x"
+
+                [[cases.runs.program.children.children]]
+                accent_mode = "none"
+                atom_class = 1
+                children = []
+                glue_kind = 0
+                kind = 2
+                large_op_kind = 0
+                operator_growth = 0
+                operator_limits = 0
+                radical_index_text = ""
+                radical_mode = "none"
+                secondary_children = []
+                style_role = "math_italic"
+                sub_text = ""
+                sup_text = ""
+                tertiary_children = []
+                text = "x"
+
+                    [cases.runs.program.children.children.table_descriptor]
+                    present = false
+
+                [[cases.runs.program.children.secondary_children]]
+                accent_mode = "none"
+                atom_class = 1
+                children = []
+                glue_kind = 0
+                kind = 2
+                large_op_kind = 0
+                operator_growth = 0
+                operator_limits = 0
+                radical_index_text = ""
+                radical_mode = "none"
+                secondary_children = []
+                style_role = "math_upright"
+                sub_text = ""
+                sup_text = ""
+                tertiary_children = []
+                text = "2"
+
+                    [cases.runs.program.children.secondary_children.table_descriptor]
+                    present = false
+
+                [cases.runs.program.children.table_descriptor]
+                present = false
+
+                [[cases.runs.program.children.tertiary_children]]
+                accent_mode = "none"
+                atom_class = 1
+                children = []
+                glue_kind = 0
+                kind = 2
+                large_op_kind = 0
+                operator_growth = 0
+                operator_limits = 0
+                radical_index_text = ""
+                radical_mode = "none"
+                secondary_children = []
+                style_role = "math_upright"
+                sub_text = ""
+                sup_text = ""
+                tertiary_children = []
+                text = "1"
+
+                    [cases.runs.program.children.tertiary_children.table_descriptor]
+                    present = false
+            [[cases.runs.program.children]]
+            accent_mode = "none"
+            atom_class = 4
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "∈"
+
+                [cases.runs.program.children.table_descriptor]
+                present = false
+            [[cases.runs.program.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "mathbb"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "ℝ"
+
+                [cases.runs.program.children.table_descriptor]
+                present = false
+
+            [cases.runs.program.table_descriptor]
+            present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "line_break"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "line_break"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "shape"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        end_angle = 0.0
+        filled = true
+        height = 1.0
+        kind = "point"
+        present = true
+        start_angle = 0.0
+        thickness = 1.0
+        width = 1.0
+
+            [cases.runs.shape.arc_color]
+            present = false
+
+            [cases.runs.shape.color]
+            present = true
+            rgba = [70, 130, 180, 255]
+
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+
+            [cases.runs.shape.fill_color]
+            present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "text"
+    text = " "
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "shape"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        end_angle = 0.0
+        filled = false
+        height = 1.0
+        kind = "line"
+        present = true
+        start_angle = 0.0
+        thickness = 2.0
+        width = 3.0
+
+            [cases.runs.shape.arc_color]
+            present = false
+
+            [cases.runs.shape.color]
+            present = true
+            rgba = [70, 130, 180, 255]
+
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+            [[cases.runs.shape.edge_colors]]
+            present = false
+
+            [cases.runs.shape.fill_color]
+            present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "line_break"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "line_break"
+    text = ""
+
+        [cases.runs.color]
+        present = false
+
+        [cases.runs.shape]
+        present = false
+    [[cases.runs]]
+    font_flags = 4
+    kind = "math_display"
+    root_style = "display"
+    text = "\\frac{a+b}{\\sqrt{c}}"
+
+        [cases.runs.color]
+        present = false
+
+        [[cases.runs.program]]
+        accent_mode = "none"
+        atom_class = 8
+        glue_kind = 0
+        kind = 7
+        large_op_kind = 0
+        operator_growth = 0
+        operator_limits = 0
+        radical_index_text = ""
+        radical_mode = "none"
+        style_role = "math"
+        sub_text = ""
+        sup_text = ""
+        tertiary_children = []
+        text = "{a+b}/{\\sqrt{c}}"
+
+            [[cases.runs.program.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "a"
+
+                [cases.runs.program.children.table_descriptor]
+                present = false
+            [[cases.runs.program.children]]
+            accent_mode = "none"
+            atom_class = 3
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_upright"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "+"
+
+                [cases.runs.program.children.table_descriptor]
+                present = false
+            [[cases.runs.program.children]]
+            accent_mode = "none"
+            atom_class = 1
+            children = []
+            glue_kind = 0
+            kind = 2
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "none"
+            secondary_children = []
+            style_role = "math_italic"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "b"
+
+                [cases.runs.program.children.table_descriptor]
+                present = false
+
+            [[cases.runs.program.secondary_children]]
+            accent_mode = "none"
+            atom_class = 1
+            glue_kind = 0
+            kind = 4
+            large_op_kind = 0
+            operator_growth = 0
+            operator_limits = 0
+            radical_index_text = ""
+            radical_mode = "sqrt"
+            secondary_children = []
+            style_role = "math"
+            sub_text = ""
+            sup_text = ""
+            tertiary_children = []
+            text = "c"
+
+                [[cases.runs.program.secondary_children.children]]
+                accent_mode = "none"
+                atom_class = 1
+                children = []
+                glue_kind = 0
+                kind = 2
+                large_op_kind = 0
+                operator_growth = 0
+                operator_limits = 0
+                radical_index_text = ""
+                radical_mode = "none"
+                secondary_children = []
+                style_role = "math_italic"
+                sub_text = ""
+                sup_text = ""
+                tertiary_children = []
+                text = "c"
+
+                    [cases.runs.program.secondary_children.children.table_descriptor]
+                    present = false
+
+                [cases.runs.program.secondary_children.table_descriptor]
+                present = false
+
+            [cases.runs.program.table_descriptor]
+            present = false
+
+        [cases.runs.shape]
+        present = false
+[[cases]]
+mode = "document"
+name = "unknown_shape_color"
+outcome = "rejected"
+source = "\\euclidpoint[color=not-a-color]"
+[[cases]]
+mode = "document"
+name = "invalid_shape_option"
+outcome = "rejected"
+source = "\\euclidline[size=2]"
+[[cases]]
+mode = "document"
+name = "unclosed_math"
+outcome = "rejected"
+source = "broken $math"
+[[cases]]
+mode = "document"
+name = "unsupported_document_command"
+outcome = "rejected"
+source = "\\section{unsupported}"
+[[cases]]
+mode = "document"
+name = "unclosed_text_color"
+outcome = "rejected"
+source = "\\textcolor{red}{unclosed"

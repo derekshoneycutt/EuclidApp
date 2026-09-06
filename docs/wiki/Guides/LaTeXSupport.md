@@ -1,7 +1,7 @@
 # LaTeX Support
 
-This document describes the LaTeX subset supported by the Julia parser and
-Dynview replay pipeline. The implementation supports both standalone math and
+This document describes the LaTeX subset supported by Dynview's native parser
+and layout pipeline. The implementation supports both standalone math and
 mixed document fragments containing styled prose, inline or display math, line
 breaks, and Euclid inline shapes.
 
@@ -25,9 +25,9 @@ breaks, and Euclid inline shapes.
 ## Recommended Usage
 
 Use `EuclidLatex.emit_latex_view_text!` for complete animation view text. It
-classifies the source as math or document mode, emits the supplied fallback as
-the copy payload, builds one complete Dynview stream, and always returns the
-fallback string expected by `get_view_text`.
+submits source and the supplied fallback to Dynview, which classifies and parses
+the complete input, builds one semantic stream, and uses the fallback as the copy
+payload. The facade always returns the fallback string expected by `get_view_text`.
 
 ```julia
 const DefinitionLatexDocument = raw"""\textbf{Definition 1.}
@@ -48,19 +48,16 @@ end
 ```
 
 Use `replay_emit_math_block!` when a Dynview block is already open and only one
-math expression needs to be inserted. It emits one recursive, non-wrapping math
+math expression needs to be inserted. It submits one source-based, non-wrapping math
 block and returns `false` on bridge failure.
-
-Use `emit_latex_dynview!` for a standalone math-only Dynview block when the
-caller does not need to mix prose or shapes.
 
 ## Modes And Classification
 
-`classify_latex_mode` selects one of two modes:
+The native parser selects one of two modes:
 
 | Mode | Intended source | Main API |
 | --- | --- | --- |
-| Math | One standalone expression | `replay_emit_math_block!`, `emit_latex_dynview!` |
+| Math | One standalone expression | `replay_emit_math_block!` |
 | Document | Prose mixed with styling, math, breaks, or shapes | `emit_latex_view_text!` |
 
 A fragment enclosed entirely by `$...$`, `$$...$$`, `\(...\)`, or `\[...\]`
@@ -69,8 +66,8 @@ is classified as math. Otherwise, document markers such as `\textbf`,
 delimiters select document mode. Plain unmarked source is treated as math for
 backward compatibility.
 
-`emit_latex_view_text!` strips a complete outer math delimiter before compiling
-math mode. In document mode it parses the full source into typed document runs;
+Dynview strips a complete outer math delimiter before parsing math mode. In document
+mode it parses the full source into typed native semantic records;
 partial document parsing is not accepted.
 
 ## Document Mode
@@ -225,9 +222,10 @@ Math mode supports these major groups:
 
 ## Display-Math Layout Contract
 
-Julia parses supported LaTeX into semantic atoms, explicit glue, and recursive child
-programs. Odin validates that preorder bridge stream and owns all font-sensitive
-measurement against the active Math_Regular generation. The measurement root is Display
+Dynview parses supported LaTeX into semantic atoms, explicit glue, and bounded child
+programs, then copies those records into the immutable snapshot. The worker owns all
+font-sensitive measurement against the active Math_Regular generation. The measurement
+root is Display
 style; inline math scopes itself to Text style through the same recursive style-override
 primitive that serves `\displaystyle` and `\textstyle`. Fractions, scripts, limits, and
 radical degrees derive text, script, script-script, and cramped child styles as required.
@@ -513,76 +511,62 @@ structured stream the only source of user-visible meaning.
 
 ## Appendix: Module Architecture
 
-The LaTeX Julia implementation now uses one public facade module,
-`src/julia/latex.jl`, which includes responsibility-focused files under
-`src/julia/latex/`.
+Julia exposes one stable authoring facade. Dynview owns all TeX grammar and semantic
+compilation.
 
 ### File Layout And Responsibilities
 
 | File | Primary Role | Key Public/Top-Level Surface |
 | --- | --- | --- |
 | `src/julia/latex.jl` | Facade module and stable API surface | `module EuclidLatex`, exports, include order |
-| `src/julia/latex/core.jl` | Core constants, maps, and data types | `UNICODE_COMMAND_MAP`, `LatexToken`, `LatexRun`, `MathPayloadOp` |
-| `src/julia/latex/cache.jl` | Parse/compile cache lifecycle | `clear_cache!`, `prune_cache!`, invalidate APIs |
-| `src/julia/latex/lexer_parser.jl` | Math lexer + parser + normalization | `tokenize_latex`, `parse_latex`, `normalize_runs` |
-| `src/julia/latex/compiler.jl` | AST-to-payload compilation + canonical serialization | `compile_emit_program`, `latex_to_plain_text`, payload builders |
-| `src/julia/latex/document_mode.jl` | Document-mode parsing and run replay orchestration | `classify_latex_mode`, `parse_latex_document`, `emit_latex_view_text!` |
-| `src/julia/latex/dynview_math.jl` | Recursive dynview math block bridge encoding/replay | `replay_emit_math_block!`, `emit_latex_dynview!`, bridge payload encoding |
+| `src/julia/latex/facade.jl` | Raw-source submission and priming | `emit_latex_view_text!`, `replay_emit_math_block!`, `prime_latex!` |
+| `src/dynview/parse/` | Classification, bounded parsing, normalization, semantic lowering | document/math grammars and semantic builders |
+| `src/dynview/core/document_store.odin` | Generation-scoped exact-source interning | immutable document handles and diagnostics |
+| `src/bridge/dynview_native_tex.odin` | Native semantics to worker staging | transactional span rewriting and record import |
 
 ### Include And Dependency Direction
-
-The include order in `src/julia/latex.jl` is designed so later files can rely
-on earlier symbols without circular imports.
 
 ```mermaid
 flowchart TD
     Facade[src/julia/latex.jl]
-    Core[src/julia/latex/core.jl]
-    Cache[src/julia/latex/cache.jl]
-    Lex[src/julia/latex/lexer_parser.jl]
-    Comp[src/julia/latex/compiler.jl]
-    Doc[src/julia/latex/document_mode.jl]
-    Dyn[src/julia/latex/dynview_math.jl]
+    Thin[src/julia/latex/facade.jl]
+    ABI[src/julia/bridge/dynview.jl]
+    Native[src/dynview/parse]
+    Store[src/dynview/core/document_store.odin]
+    Snapshot[Pointer-free view snapshot]
 
-    Facade --> Core --> Cache --> Lex --> Comp --> Doc --> Dyn
-    Comp --> Lex
-    Doc --> Comp
-    Dyn --> Comp
+    Facade --> Thin --> ABI --> Native --> Store --> Snapshot
 ```
 
-Practical rule: dependencies should generally flow from parsing toward
-compilation and replay, with the facade preserving one stable import path.
+Practical rule: Julia submits source through the facade; parsing and semantics never
+flow back into Julia.
 
 ### End-To-End Runtime Flow
 
 ```mermaid
 flowchart LR
     A[Source LaTeX text]
-    B{Mode classification}
-    C[Math lexer/parser]
-    D[Normalize runs]
-    E[Compile recursive payload]
-    F[Bridge encode + dynview replay]
-    G[Rendered dynview block]
-    H[Document parser]
-    I[Document runs + embedded math replay]
-    J[Fallback plain text]
+    B[Raw-source bridge]
+    C{Native classification}
+    D[Bounded document/math parse]
+    E[Generation-scoped interned semantics]
+    F[Pointer-free snapshot]
+    G[Worker shaping and layout]
+    H[Rendered Dynview content]
+    I[Authored fallback]
 
-    A --> B
-    B -->|Math| C --> D --> E --> F --> G
-    B -->|Document| H --> I --> G
-    E --> J
-    I --> J
+    A --> B --> C --> D --> E --> F --> G --> H
+    A --> I --> F
 ```
 
 ### Ownership And Failure Boundaries
 
 | Concern | Owning Unit | Failure Behavior |
 | --- | --- | --- |
-| Tokenization + math parse correctness | `lexer_parser.jl` | Produces recoverable fallback atoms where possible |
-| Document command parsing and validation | `document_mode.jl` | Fails closed to fallback on malformed document syntax |
-| Program caching and invalidation | `cache.jl` | Bounded cache with explicit clear/invalidate APIs |
-| Bridge payload encoding/replay | `dynview_math.jl` | Stops emission on bridge status failure |
+| Tokenization, parsing, and normalization | `src/dynview/parse/` | Preserves frozen recovery behavior or rejects atomically |
+| Semantic reuse | `src/dynview/core/document_store.odin` | Bounded exact-source interning and stable negative caching |
+| Snapshot staging | `src/bridge/dynview_native_tex.odin` | Rolls back the complete fragment on failure |
+| Shaping, layout, and derived caches | `src/dynview/math/`, `src/dynview/layout/`, `src/dynview/compile/` | Retains fallback when a rebuild cannot publish |
 | User-visible copy fallback contract | `emit_latex_view_text!` | Always returns supplied fallback string |
 
 ## Summary

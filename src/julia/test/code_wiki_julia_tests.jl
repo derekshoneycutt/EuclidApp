@@ -90,12 +90,12 @@ end
 
     latex = extract_julia_module(config, "src/julia/latex.jl")
     @test latex.display_name == "EuclidLatex"
-    @test any(symbol -> symbol.name == "parse_latex" &&
+    @test any(symbol -> symbol.name == "emit_latex_view_text!" &&
         symbol.visibility == :public, latex.symbols)
     rendered_latex = render_julia_module_page(latex)
-    @test occursin("[`parse_latex`](#symbol-julia-EuclidLatex-function-parse-latex)",
+    @test occursin(
+        "[`emit_latex_view_text!`](#symbol-julia-EuclidLatex-function-emit-latex-view-text)",
         rendered_latex)
-    @test occursin("### `PARSER_GRAMMAR_VERSION`", rendered_latex)
 
     bridge = extract_julia_module(config, "src/julia/odin-julia-bridge.jl")
     @test bridge.display_name == "OdinJuliaBridge"

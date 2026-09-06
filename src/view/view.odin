@@ -353,7 +353,10 @@ free_animations_state :: proc(state : ^Euclid_General_State) {
     }
     view_core.gif_capture_destroy_session(&state^.gif_capture)
     evidence_allocation.domain_destroy(&state^.evidence_allocations)
-    core.animation_value_store_destroy(&state^.animation_values)
+    core.animation_storage_destroy(
+        &state^.animation_memory,
+        &state^.animation_values,
+        &state^.dynview_documents)
     julia.destroy_julia_interface_resources(state)
     free(state^.particle_system)
     free(state^.point_system)

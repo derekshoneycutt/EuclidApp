@@ -438,7 +438,7 @@ animation cannot be found, will simply start the first animation in the tree. Th
 helpful for simple animation updates.
 
 Animation content remains dynamically loaded when using a sysimage. Changes to baked core
-modules such as the bridge wrappers, LaTeX compiler, geometry helpers, animation helpers,
+modules such as the bridge wrappers, TeX source facade, geometry helpers, animation helpers,
 or Scratchpad require rebuilding the sysimage and restarting Euclid.
 
 ### Q: What is all this verification output?

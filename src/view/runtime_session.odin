@@ -317,8 +317,11 @@ initiate_animations_state :: proc(
         free(point_system_parts.point_system)
         return nil
     }
-    if !core.animation_value_store_init(&state^.animation_values) {
-        fmt.eprintln("Failed to initialize the animation value store.")
+    if !core.animation_storage_init(
+        &state^.animation_memory,
+        &state^.animation_values,
+        &state^.dynview_documents) {
+        fmt.eprintln("Failed to initialize animation storage.")
         free_animations_state(state)
         return nil
     }

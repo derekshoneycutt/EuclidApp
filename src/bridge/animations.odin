@@ -555,8 +555,11 @@ clean_current_animation :: proc(state: ^core.Euclid_General_State) -> bool {
 //   Clear animation-owned native state into the generation about to initiate.
 reset_animation_switch_state :: proc(state: ^core.Euclid_General_State) -> bool {
     target_generation := current_animation_generation(state) + 1
-    if core.animation_value_store_begin_generation(
-        &state^.animation_values, target_generation) != .Ok {
+    if core.animation_storage_begin_generation(
+        &state^.animation_memory,
+        &state^.animation_values,
+        &state^.dynview_documents,
+        target_generation) != .Ok {
         return false
     }
     shapes.clear_animation_data(

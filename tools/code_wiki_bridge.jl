@@ -208,7 +208,8 @@ const ODIN_ABI_TYPE_ALIASES = Dict(
     "Bridge_Triangle_Colors" => "bridge-triangle-colors",
     "Bridge_Box_Edge_Colors" => "bridge-box-edge-colors",
     "Bridge_Pie_Colors" => "bridge-pie-colors",
-    "Bridge_Dynview_Math_Program" => "bridge-math-program",
+    "Bridge_Dynview_Document_Request" => "bridge-document-request",
+    "Bridge_Dynview_Math_Request" => "bridge-math-request",
     "core.Bridge_Inline_Box_Dims" => "bridge-inline-box-dims",
     "core.Bridge_Inline_Size" => "bridge-inline-size",
     "core.Bridge_Inline_Perpendicular_Dims" => "bridge-inline-perpendicular-dims",
@@ -230,7 +231,6 @@ const ODIN_ABI_TYPE_ALIASES = Dict(
     "Animation_Descriptor_Abi_Metadata" => "animation-descriptor-metadata",
     "[^]i32" => "pointer-i32", "^i32" => "pointer-i32",
     "[^]f32" => "pointer-f32", "^f32" => "pointer-f32",
-    "[^]Bridge_Dynview_Math_Op" => "pointer-math-op",
     "int" => "i64", "i32" => "i32", "u8" => "u8", "u32" => "u32",
     "u64" => "u64", "f32" => "f32", "bool" => "bool")
 
@@ -250,7 +250,8 @@ const JULIA_ABI_TYPE_ALIASES = Dict(
     "BridgeTriangleColors" => "bridge-triangle-colors",
     "BridgeBoxEdgeColors" => "bridge-box-edge-colors",
     "BridgePieColors" => "bridge-pie-colors",
-    "BridgeDynviewMathProgram" => "bridge-math-program",
+    "BridgeDynviewDocumentRequest" => "bridge-document-request",
+    "BridgeDynviewMathRequest" => "bridge-math-request",
     "BridgeInlineBoxDims" => "bridge-inline-box-dims",
     "BridgeInlineSize" => "bridge-inline-size",
     "BridgeInlinePerpendicularDims" => "bridge-inline-perpendicular-dims",
@@ -270,7 +271,6 @@ const JULIA_ABI_TYPE_ALIASES = Dict(
     "BridgeShapeCompass" => "bridge-shape-compass",
     "Ptr{Cint}" => "pointer-i32", "Ref{Int32}" => "pointer-i32",
     "Ptr{Cfloat}" => "pointer-f32", "Ref{Cfloat}" => "pointer-f32",
-    "Ptr{BridgeDynviewMathOp}" => "pointer-math-op",
     "Int64" => "i64", "Int32" => "i32", "Cint" => "i32",
     "UInt8" => "u8", "UInt64" => "u64", "Cfloat" => "f32",
     "Bool" => "bool")

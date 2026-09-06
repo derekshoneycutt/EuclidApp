@@ -9,10 +9,6 @@ using Test
         include("scratchpad_tests.jl")
     end
 
-    @testset "LaTeX" begin
-        include("latex_tests.jl")
-    end
-
     @testset "EuclidRepl" begin
         include("euclidrepl_tests.jl")
     end

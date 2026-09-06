@@ -11,9 +11,19 @@ animation_value_test_state_create :: proc(
     generation: u64 = 1) -> ^core.Euclid_General_State {
     state := new(core.Euclid_General_State)
     state^.saved_context = context
-    if !core.animation_value_store_init(&state^.animation_values) ||
-        core.animation_value_store_begin_generation(
-            &state^.animation_values, generation) != .Ok {
+    if !core.animation_storage_init(
+        &state^.animation_memory,
+        &state^.animation_values,
+        &state^.dynview_documents) ||
+        core.animation_storage_begin_generation(
+            &state^.animation_memory,
+            &state^.animation_values,
+            &state^.dynview_documents,
+            generation) != .Ok {
+        core.animation_storage_destroy(
+            &state^.animation_memory,
+            &state^.animation_values,
+            &state^.dynview_documents)
         free(state)
         return nil
     }
@@ -22,7 +32,10 @@ animation_value_test_state_create :: proc(
 
 //   Destroy one host state allocated for copied value ABI tests.
 animation_value_test_state_destroy :: proc(state: ^core.Euclid_General_State) {
-    core.animation_value_store_destroy(&state^.animation_values)
+    core.animation_storage_destroy(
+        &state^.animation_memory,
+        &state^.animation_values,
+        &state^.dynview_documents)
     free(state)
 }
 

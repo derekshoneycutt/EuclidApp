@@ -278,11 +278,11 @@ flowchart TD
 
 Use `EuclidLatex.emit_latex_view_text!` for complete animation view text. It:
 
-- classifies the source as document or math mode;
-- parses and emits one complete Dynview stream;
+- submits source and presentation metadata through the thin Julia facade;
+- lets native Dynview classify and parse one complete semantic stream;
 - installs the supplied fallback as the copy payload;
 - returns the same fallback expected by `get_view_text`;
-- stops structured emission safely when parsing or bridge replay fails.
+- preserves fallback safely when parsing, storage, staging, or publication fails.
 
 ```julia
 const DefinitionLatexDocument = raw"""\textbf{Definition 1.}
@@ -301,7 +301,7 @@ end
 ```
 
 Use raw Julia strings for LaTeX source when practical. Keep source constants
-stable across frames so math parsing and compiled-program caches can be reused.
+stable across frames so generation-scoped exact-source interning can reuse semantics.
 
 ### Choosing Document Or Math Mode
 
@@ -414,13 +414,10 @@ the structured stream instead of displaying a partial document.
 | API | Use |
 | --- | --- |
 | `emit_latex_view_text!` | Complete document/math view text with authored fallback. |
-| `replay_emit_math_block!` | Insert one recursive expression into an open Dynview block. |
-| `emit_latex_dynview!` | Emit a standalone math-only block. |
+| `replay_emit_math_block!` | Insert one source-based expression into an open Dynview block. |
 | Direct Dynview bridge calls | Last resort for composition the high-level APIs cannot express. |
 
 `replay_emit_math_block!` returns `false` on bridge failure.
-`emit_latex_dynview!` is appropriate only when the caller does not need
-document prose or embedded shapes.
 
 Do not manually parse LaTeX or approximate structured math with spaced text.
 

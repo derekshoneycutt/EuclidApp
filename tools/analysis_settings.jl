@@ -322,6 +322,14 @@ function add_builder_test_allocation_procs!(reviews)
         :parameters,
         "The test allocator implements the required seven-parameter allocator ABI.";
         response=Ignore))
+    push!(reviews, ReviewedComplexity(
+        "test-document-store-allocator-parameters",
+        "src/dynview/core/document_store_test.odin",
+        :odin,
+        "document_store_test_allocator_proc",
+        :parameters,
+        "The test allocator implements the required seven-parameter allocator ABI.";
+        response=Ignore))
 end
 
 """Add reviewed metric policies for one animation state-machine module."""
@@ -364,10 +372,10 @@ AnalysisSettings(
     euclid_naming_settings(),
     JetSettings([
         JetEntryPoint(
-            "latex-plain-text",
+            "latex-raw-math-facade",
             "src/julia/latex.jl",
-            EuclidAnalysisRoots.EuclidLatex.latex_to_plain_text,
-            (String,)),
+            EuclidAnalysisRoots.EuclidLatex.replay_emit_math_block!,
+            (Ptr{Cvoid}, String)),
     ]),
     OdinBuildSettings([
         OdinBuildTarget(
@@ -396,7 +404,7 @@ AnalysisSettings(
         [
             BaseSettings.allocations.source_patterns...;
             AllocatorSourcePattern("builder.allocator", :custom);
-            AllocatorSourcePattern("store.arena_owner.allocator", :custom)
+            AllocatorSourcePattern("store.allocator", :custom)
         ],
         ReviewedAllocationPolicy[
             # Shared arena ownership reserves virtual storage with explicit lifecycle.
@@ -422,6 +430,16 @@ AnalysisSettings(
                 response=Ignore),
             custom_test_allocation_reviews()...,
             ReviewedAllocationPolicy(
+                "test-dynview-parse-semantic-output",
+                "src/dynview/parse/math_grammar_test.odin",
+                "tex_math_test_output",
+                :implicit,
+                "Bounded parser output fixture is released by each focused test.";
+                operation="new",
+                target="Tex_Semantic_Output",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
                 "test-dynview-core-buffer-views",
                 "src/dynview/core/buffers_test.odin",
                 "command_buffer_views_prefer_published_content",
@@ -429,39 +447,6 @@ AnalysisSettings(
                 "Bounded test fixture is released by the procedure's deferred free.";
                 operation="new",
                 target="app_core.Dynview_Command_Buffer",
-                certainty=:definite,
-                response=Ignore),
-            ReviewedAllocationPolicy(
-                "test-table-descriptor-import",
-                "src/bridge/dynview_table_descriptor_test.odin",
-                "dynview_table_descriptor_import_preserves_typed_metadata",
-                :context,
-                "Bounded test fixture is released by the procedure's deferred free.";
-                operation="new",
-                target="core.Dynview_Compile_Cache",
-                allocator_source="context.allocator",
-                certainty=:definite,
-                response=Ignore),
-            ReviewedAllocationPolicy(
-                "test-table-descriptor-invalid-alignment",
-                "src/bridge/dynview_table_descriptor_test.odin",
-                "dynview_table_descriptor_import_rejects_invalid_alignment",
-                :context,
-                "Bounded test fixture is released by the procedure's deferred free.";
-                operation="new",
-                target="core.Dynview_Compile_Cache",
-                allocator_source="context.allocator",
-                certainty=:definite,
-                response=Ignore),
-            ReviewedAllocationPolicy(
-                "test-table-descriptor-invalid-boundaries",
-                "src/bridge/dynview_table_descriptor_test.odin",
-                "dynview_table_descriptor_import_rejects_invalid_boundaries",
-                :context,
-                "Bounded test fixture is released by the procedure's deferred free.";
-                operation="new",
-                target="core.Dynview_Compile_Cache",
-                allocator_source="context.allocator",
                 certainty=:definite,
                 response=Ignore),
             # Shared bounded builders grow within an explicit bulk-lifetime owner.
@@ -492,10 +477,10 @@ AnalysisSettings(
                 "src/core/animation_value_store.odin",
                 "animation_value_store_insert",
                 :custom,
-                "Quota-checked opaque payload is retired by animation-generation reset or store destruction.";
+                "Quota-checked opaque payload is retired by shared animation-memory reset or destruction.";
                 operation="make",
                 target="[]u8",
-                allocator_source="store.arena_owner.allocator",
+                allocator_source="store.allocator",
                 certainty=:definite,
                 response=Ignore),
             ReviewedAllocationPolicy(
@@ -503,10 +488,10 @@ AnalysisSettings(
                 "src/core/animation_value_store.odin",
                 "animation_value_pending_allocate_storage",
                 :custom,
-                "Validated pending payload storage is retired by animation-generation reset or store destruction.";
+                "Validated pending payload storage is retired by shared animation-memory reset or destruction.";
                 operation="make",
                 target="[]u8",
-                allocator_source="store.arena_owner.allocator",
+                allocator_source="store.allocator",
                 certainty=:definite,
                 response=Ignore),
             ReviewedAllocationPolicy(

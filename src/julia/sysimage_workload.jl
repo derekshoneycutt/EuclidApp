@@ -1,18 +1,5 @@
 include(joinpath(@__DIR__, "sysimage_core.jl"))
 
-const LatexSamples = (
-    raw"$x_1^2 \in \mathbb{R}$",
-    raw"$\frac{x^2}{\sqrt{y}}$",
-    raw"$\left(\sum_{i=1}^{n} a_i\right)$",
-    raw"$\begin{bmatrix}a & b \\ c & d\end{bmatrix}$")
-
-for source in LatexSamples
-    EuclidLatex.latex_to_plain_text(source)
-end
-
-EuclidLatex.parse_latex_document(
-    raw"\textbf{Euclid} document $x_1^2$ \newline \euclidline[color=steelblue]{4}{2}")
-
 Scratchpad.classify_parse("sum(1:3)")
 Scratchpad.classify_parse("begin\n    value = 1")
 Scratchpad.longest_completion_prefix(["EuclidGeometry", "EuclidAnimations"])

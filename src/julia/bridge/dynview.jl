@@ -138,44 +138,37 @@ Returns a BRIDGE_STATUS_* code.
 function dynview_math_block(
     state_ptr::Ptr{Cvoid},
     latex_source::AbstractString,
-    style_id::Integer)
-
-    @ccall dynview_math_block(
-        state_ptr::Ptr{Cvoid},
-        latex_source::Cstring,
-        Int32(style_id)::Int32)::Int32
+    style_id::Integer;
+    text_style::Integer=BRIDGE_DYNVIEW_STYLE_OUTPUT,
+    mathbb_style::Integer=dynview_style_with_font_flags(
+        BRIDGE_DYNVIEW_FONT_FLAG_REGULAR),
+    root_style::Integer=BRIDGE_DYNVIEW_MATH_ROOT_DISPLAY)
+    source_text = String(latex_source)
+    GC.@preserve source_text begin
+        request = BridgeDynviewMathRequest(
+            pointer(source_text), Int32(text_style), Int32(style_id),
+            Int32(mathbb_style), Int32(root_style))
+        return @ccall dynview_math_block(
+            state_ptr::Ptr{Cvoid}, request::BridgeDynviewMathRequest)::Int32
+    end
 end
 
-"""
-Emit one whole inline math block using a compiled flat math-op stream and shared text blob.
-
-This is the bridge surface used by recursive-supportive math-block layout work.
-Returns a BRIDGE_STATUS_* code.
-"""
-function dynview_math_block_from_ops(
+"""Build one complete native mixed-TeX stream with an authored fallback."""
+function dynview_tex_document(
     state_ptr::Ptr{Cvoid},
-    plain_text::AbstractString,
-    style_id::Integer,
-    ops::Vector{BridgeDynviewMathOp},
-    top_level_op_count::Integer,
-    table_descriptors::Vector{BridgeDynviewMathTableDescriptor},
-    text_blob::AbstractString)
-
-    op_count = Int32(length(ops))
-    table_descriptor_count = Int32(length(table_descriptors))
-    GC.@preserve ops table_descriptors plain_text text_blob begin
-        ops_ptr = op_count > 0 ? pointer(ops) : Ptr{BridgeDynviewMathOp}(C_NULL)
-        descriptor_ptr = table_descriptor_count > 0 ? pointer(table_descriptors) :
-            Ptr{BridgeDynviewMathTableDescriptor}(C_NULL)
-        program = BridgeDynviewMathProgram(
-            ops_ptr, op_count, Int32(top_level_op_count),
-            descriptor_ptr, table_descriptor_count)
-        @ccall dynview_math_block_from_ops(
-            state_ptr::Ptr{Cvoid},
-            plain_text::Cstring,
-            Int32(style_id)::Int32,
-            program::BridgeDynviewMathProgram,
-            text_blob::Cstring)::Int32
+    latex_source::AbstractString,
+    fallback::AbstractString,
+    block_kind::Integer,
+    block_id::Integer,
+    text_style::Integer)
+    source_text = String(latex_source)
+    fallback_text = String(fallback)
+    GC.@preserve source_text fallback_text begin
+        request = BridgeDynviewDocumentRequest(
+            pointer(source_text), pointer(fallback_text),
+            Int32(block_kind), Int32(block_id), Int32(text_style))
+        return @ccall dynview_tex_document(
+            state_ptr::Ptr{Cvoid}, request::BridgeDynviewDocumentRequest)::Int32
     end
 end
 

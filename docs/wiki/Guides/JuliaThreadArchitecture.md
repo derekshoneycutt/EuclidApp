@@ -93,7 +93,7 @@ flowchart LR
 | Animation scheduling, callback capture, lifecycle, reload | `src/bridge/animations.odin` |
 | Immutable animation queries and scene batches | `src/bridge/scene_commands.odin` |
 | Copied Scratchpad requests and replies | `src/bridge/scratchpad.odin` |
-| Dynview snapshot emission and import | `src/bridge/dynview.odin`, `src/dynview/**` |
+| Dynview raw-source ingestion and snapshots | `src/bridge/dynview_native_tex.odin`, `src/bridge/runtime_service.odin`, `src/dynview/**` |
 | Frame-loop publication boundaries | `src/view/view.odin` |
 | Host worker-pool windows | `src/view/simulation_executor.odin` |
 | Julia callbacks and global loop | `src/julia/script.jl` |
@@ -355,6 +355,11 @@ worker-only runtime, and calls the selected animation's view callback. Fallback
 text and every populated semantic span are copied into the reserved snapshot
 before completion.
 
+TeX source submitted by the thin Julia facade is classified, parsed, and interned
+natively on this owner-controlled ingestion path. Interned documents live in
+animation-generation memory only long enough to be resolved and copied; handles and
+arena pointers never enter a `View_Snapshot`.
+
 No returned string may depend on the worker temporary allocator after task completion.
 The worker appends fallback and semantic command bytes into the reserved slot's bounded
 byte builders, then appends commands, math programs, math commands, and math nodes into
@@ -447,8 +452,8 @@ fence returns read ownership before drawing. Shutdown destroys this capability a
 worker completion and before retiring font generations.
 
 The capability provides bounded left-to-right `math` script shaping, glyph extents,
-italic correction, and top-accent attachment. Julia distinguishes italic-variable and
-upright math runs through existing style IDs. The worker shaping call strictly projects
+italic correction, and top-accent attachment. Native TeX semantics distinguish
+italic-variable and upright math runs. The worker shaping call strictly projects
 eligible source scalars into caller-owned temporary bytes; command-buffer, fallback,
 and copy text remain unchanged. Malformed roles, UTF-8, or insufficient workspace fail
 without publishing a shape. Production math measurement consumes complete cached runs

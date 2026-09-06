@@ -5,27 +5,10 @@ import "../core"
 import "core:log"
 import rl "vendor:raylib"
 
-Dynview_Math_Text_Payloads :: struct {
-    plain_offset: int,
-    plain_count:  int,
-    blob_offset:  int,
-    blob_count:   int,
-    status:       i32,
-}
-
 Dynview_Inline_Target :: struct {
     runtime: ^core.Dynview_System,
     buffer:  ^core.Dynview_Command_Buffer,
     status:  i32,
-}
-
-Dynview_Math_Block_Input :: struct {
-    ops:               [^]Bridge_Dynview_Math_Op,
-    op_count:          i32,
-    top_level_op_count: i32,
-    style_id:          i32,
-    table_descriptors: [^]Bridge_Dynview_Math_Table_Descriptor,
-    table_descriptor_count: i32,
 }
 
 Dynview_Math_Import_Checkpoint :: struct {
@@ -159,6 +142,7 @@ dynview_reset_stream :: proc "c" (state: ^core.Euclid_General_State) -> i32 {
     runtime^.command_buffer.stream_open_block = false
     runtime^.command_buffer.stream_open_block_id = -1
     runtime^.compile_cache.math_program_count = 0
+    runtime^.compile_cache.math_table_descriptor_count = 0
     runtime^.compile_cache.math_command_count = 0
     runtime^.compile_cache.math_node_count = 0
     runtime^.command_buffer.revision += 1
@@ -359,68 +343,28 @@ dynview_math_glyph_run :: proc "c" (
     })
 }
 
-//   Append one whole inline math block.
-//
-// Parameters:
-//   - state: Global runtime state passed from the host application.
-//   - latex_source: Placeholder LaTeX source payload.
-//   - style_id: Style id assigned to the emitted block command.
-//
-// Returns:
-//   - BRIDGE_STATUS_INVALID_ARGUMENT until recursive program storage is wired.
+//   Parse, intern, and append one whole inline math block from raw TeX source.
 @(export)
 dynview_math_block :: proc "c" (
     state: ^core.Euclid_General_State,
-    latex_source: cstring,
-    style_id: i32) -> i32 {
-
+    request: Bridge_Dynview_Math_Request) -> i32 {
+    if state == nil {
+        return BRIDGE_STATUS_INVALID_ARGUMENT
+    }
     context = state^.saved_context
-    runtime: ^core.Dynview_System
-    status := dynview_require_runtime(state, &runtime)
-    if status != BRIDGE_STATUS_OK {
-        return status
-    }
-    if runtime == nil || !runtime^.enabled {
-        return BRIDGE_STATUS_OK
-    }
-
-    buffer: ^core.Dynview_Command_Buffer
-    status = dynview_require_buffer(runtime, &buffer, true)
-    if status != BRIDGE_STATUS_OK {
-        return status
-    }
-
-    if latex_source == nil || style_id < 0 {
-        return dynview_fail(runtime, BRIDGE_STATUS_INVALID_ARGUMENT)
-    }
-
-    _ = latex_source
-    _ = style_id
-    return dynview_fail(runtime, BRIDGE_STATUS_INVALID_ARGUMENT)
+    return dynview_native_math_source(state, request)
 }
 
-//   Report whether the compile cache can hold the whole recursive math payload.
-dynview_math_capacity_available :: proc(
-    cache: ^core.Dynview_Compile_Cache,
-    ops: [^]Bridge_Dynview_Math_Op,
-    op_count: int,
-    table_descriptor_count: int) -> bool {
-
-    if cache^.math_program_count >= core.DYNVIEW_MAX_MATH_PROGRAMS {
-        return false
+//   Build one complete mixed-TeX stream while retaining fallback on import failure.
+@(export)
+dynview_tex_document :: proc "c" (
+    state: ^core.Euclid_General_State,
+    request: Bridge_Dynview_Document_Request) -> i32 {
+    if state == nil {
+        return BRIDGE_STATUS_INVALID_ARGUMENT
     }
-    extra_programs, extra_commands :=
-        dynview_count_recursive_math_capacity(ops, op_count)
-    if cache^.math_program_count + 1 + extra_programs >
-        core.DYNVIEW_MAX_MATH_PROGRAMS {
-        return false
-    }
-    if table_descriptor_count < 0 || cache^.math_table_descriptor_count +
-        table_descriptor_count > core.DYNVIEW_MAX_MATH_TABLE_DESCRIPTORS {
-        return false
-    }
-    return cache^.math_command_count + op_count + extra_commands <=
-        core.DYNVIEW_MAX_MATH_COMMANDS
+    context = state^.saved_context
+    return dynview_native_document_source(state, request)
 }
 
 //   Capture mutable counters touched by one math-block import transaction.
@@ -472,209 +416,6 @@ dynview_inline_atom_target :: proc(
         target.status = status
     }
     return target
-}
-
-//   Report whether the math-block arguments are non-nil and non-empty.
-dynview_math_block_args_valid :: proc(
-    plain_text: cstring,
-    program: Bridge_Dynview_Math_Program,
-    text_blob: cstring) -> bool {
-
-    return plain_text != nil && text_blob != nil && program.ops != nil &&
-        program.op_count > 0 && program.top_level_op_count > 0 &&
-        program.table_descriptor_count >= 0 && (program.table_descriptor_count == 0 ||
-        program.table_descriptors != nil)
-}
-
-//   Append the plain-text and shared blob payloads, returning both spans.
-dynview_append_math_text_payloads :: proc(
-    runtime: ^core.Dynview_System,
-    plain_text, text_blob: cstring) -> Dynview_Math_Text_Payloads {
-
-    plain_offset, plain_count, blob_offset, blob_count: int
-    status := dynview_append_text_payload(
-        runtime, string(plain_text), &plain_offset, &plain_count)
-    if status != BRIDGE_STATUS_OK {
-        return Dynview_Math_Text_Payloads{0, 0, 0, 0, status}
-    }
-
-    status = dynview_append_text_payload(
-        runtime, string(text_blob), &blob_offset, &blob_count)
-    if status != BRIDGE_STATUS_OK {
-        return Dynview_Math_Text_Payloads{0, 0, 0, 0, status}
-    }
-
-    return Dynview_Math_Text_Payloads{
-        plain_offset,
-        plain_count,
-        blob_offset,
-        blob_count,
-        BRIDGE_STATUS_OK,
-    }
-}
-
-//   Append text and import one complete math block with counter rollback on failure.
-dynview_math_block_transaction :: proc(
-    runtime: ^core.Dynview_System,
-    buffer: ^core.Dynview_Command_Buffer,
-    input: Dynview_Math_Block_Input,
-    plain_text, text_blob: cstring) -> i32 {
-
-    checkpoint := dynview_math_import_checkpoint(runtime)
-    payloads := dynview_append_math_text_payloads(runtime, plain_text, text_blob)
-    if payloads.status != BRIDGE_STATUS_OK {
-        dynview_math_import_rollback(runtime, checkpoint)
-        return payloads.status
-    }
-    status := dynview_emit_math_block(runtime, buffer, input, payloads)
-    if status != BRIDGE_STATUS_OK {
-        dynview_math_import_rollback(runtime, checkpoint)
-    }
-    return status
-}
-
-//   Append one whole inline math block from a flat child-command payload.
-//
-// Parameters:
-//   - state: Global runtime state passed from the host application.
-//   - plain_text: Plain-text copy payload for the math block.
-//   - style_id: Style id assigned to the emitted block command.
-//   - program: Flat op payload with op counts consumed by the importer.
-//   - text_blob: Shared text blob backing the math op spans.
-//
-// Returns:
-//   - BRIDGE_STATUS_OK when the block is imported successfully.
-//   - BRIDGE_STATUS_INVALID_ARGUMENT when the payload is malformed.
-//   - BRIDGE_STATUS_OUT_OF_CAPACITY when the compile cache is full.
-@(export)
-dynview_math_block_from_ops :: proc "c" (
-    state: ^core.Euclid_General_State,
-    plain_text: cstring,
-    style_id: i32,
-    program: Bridge_Dynview_Math_Program,
-    text_blob: cstring) -> i32 {
-
-    context = state^.saved_context
-    runtime: ^core.Dynview_System
-    status := dynview_require_runtime(state, &runtime)
-    if status != BRIDGE_STATUS_OK {
-        return status
-    }
-    if runtime == nil || !runtime^.enabled {
-        return BRIDGE_STATUS_OK
-    }
-
-    buffer: ^core.Dynview_Command_Buffer
-    status = dynview_require_buffer(runtime, &buffer, true)
-    if status != BRIDGE_STATUS_OK {
-        return status
-    }
-    if !dynview_math_block_args_valid(plain_text, program, text_blob) {
-        return dynview_fail(runtime, BRIDGE_STATUS_INVALID_ARGUMENT)
-    }
-
-    if !dynview_math_capacity_available(&runtime^.compile_cache, program.ops,
-        int(program.op_count), int(program.table_descriptor_count)) {
-        return dynview_fail(runtime, BRIDGE_STATUS_OUT_OF_CAPACITY)
-    }
-
-    input := Dynview_Math_Block_Input{
-        program.ops, program.op_count, program.top_level_op_count, style_id,
-        program.table_descriptors, program.table_descriptor_count}
-    return dynview_math_block_transaction(
-        runtime, buffer, input, plain_text, text_blob)
-}
-
-//   Import the root and recursive child programs from one validated block payload.
-dynview_import_root_math_program :: proc(
-    cache: ^core.Dynview_Compile_Cache,
-    buffer: ^core.Dynview_Command_Buffer,
-    input: Dynview_Math_Block_Input,
-    payloads: Dynview_Math_Text_Payloads,
-    program_id: int) -> (next_program_id: int, status: i32) {
-
-    next_program_id = program_id + 1
-    cursor := 0
-    descriptor_base := cache^.math_table_descriptor_count
-    status = dynview_import_math_table_descriptors(
-        cache, input.table_descriptors, int(input.table_descriptor_count))
-    if status != BRIDGE_STATUS_OK {
-        return
-    }
-    status = dynview_import_math_program_from_ops(Dynview_Import_Context{
-        cache = cache, block_id = buffer^.stream_open_block_id,
-        ops = input.ops, op_count = int(input.op_count), cursor = &cursor,
-        blob_offset = payloads.blob_offset, blob_count = payloads.blob_count,
-        next_program_id = &next_program_id, table_descriptors = input.table_descriptors,
-        table_descriptor_count = int(input.table_descriptor_count),
-        table_descriptor_base = descriptor_base,
-    }, int(input.top_level_op_count), program_id)
-    if status == BRIDGE_STATUS_OK && cursor != int(input.op_count) {
-        status = BRIDGE_STATUS_INVALID_ARGUMENT
-    }
-    return
-}
-
-//   Import a math op program into the compile cache and emit the math block command.
-//
-// Parameters:
-//   - runtime: Active dynview runtime owning the compile cache.
-//   - buffer: Command buffer receiving the emitted math block command.
-//   - input: Flat op payload, op counts, and style id for the block.
-//   - payloads: Resolved plain-text and blob spans backing the program.
-//
-// Returns:
-//   - BRIDGE_STATUS_OK when the program is imported and the command is emitted.
-dynview_emit_math_block :: proc(
-    runtime: ^core.Dynview_System,
-    buffer: ^core.Dynview_Command_Buffer,
-    input: Dynview_Math_Block_Input,
-    payloads: Dynview_Math_Text_Payloads) -> i32 {
-
-    cache := &runtime^.compile_cache
-    program_id := cache^.math_program_count
-    next_child_program_id, status := dynview_import_root_math_program(
-        cache, buffer, input, payloads, program_id)
-    if status != BRIDGE_STATUS_OK {
-        return dynview_fail(runtime, status)
-    }
-
-    return dynview_commit_math_block(
-        runtime, buffer, {program_id, next_child_program_id}, input, payloads)
-}
-
-//   Mark an imported math program valid and emit its math block command.
-//
-// Parameters:
-//   - runtime: Active dynview runtime owning the compile cache.
-//   - buffer: Command buffer receiving the emitted math block command.
-//   - program_ids: Imported program id and the next child program id.
-//   - input: Op payload descriptor carrying the block style id.
-//   - payloads: Resolved plain-text and blob spans backing the program.
-//
-// Returns:
-//   - BRIDGE_STATUS_OK when the command is emitted.
-dynview_commit_math_block :: proc(
-    runtime: ^core.Dynview_System,
-    buffer: ^core.Dynview_Command_Buffer,
-    program_ids: [2]int,
-    input: Dynview_Math_Block_Input,
-    payloads: Dynview_Math_Text_Payloads) -> i32 {
-
-    cache := &runtime^.compile_cache
-    cache^.math_programs[program_ids[0]].valid = true
-    cache^.math_programs[program_ids[0]].copy_text_offset = payloads.plain_offset
-    cache^.math_programs[program_ids[0]].copy_text_len = payloads.plain_count
-    cache^.math_program_count = program_ids[1]
-
-    return dynview_push_command(runtime, core.Dynview_Command{
-        kind = .Math_Block,
-        block_id = buffer^.stream_open_block_id,
-        style_id = input.style_id,
-        math_program_id = i32(program_ids[0]),
-        text_offset = payloads.plain_offset,
-        text_len = payloads.plain_count,
-    })
 }
 
 //   Append one non-rendering copyable payload segment to the current dynview block.

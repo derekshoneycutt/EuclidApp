@@ -7,7 +7,7 @@
 1. [Module Map (Odin + Julia)](#module-map-odin--julia)
 1. [Scratchpad Architecture (Interactive Runtime Surface)](#scratchpad-architecture-interactive-runtime-surface)
 1. [Dynview Text Engine (Hybrid-Immediate Rendering)](#dynview-text-engine-hybrid-immediate-rendering)
-1. [Dynamic LaTeX Pipeline (Julia Parse + Odin Layout)](#dynamic-latex-pipeline-julia-parse--odin-layout)
+1. [Dynamic LaTeX Pipeline (Native Parse And Layout)](#dynamic-latex-pipeline-native-parse-and-layout)
 1. [Odin-Julia Bridge: How the Boundary Works](#odin-julia-bridge-how-the-boundary-works)
 1. [Threading Strategy](#threading-strategy)
 1. [Testing Strategy](#testing-strategy)
@@ -44,7 +44,7 @@ If you are new, read in this order:
 1. Host/runtime boundary (`src/bridge/abi.odin`, `src/bridge/abi-*.odin`,
    `src/bridge/bootstrap.odin`, `src/bridge/animations.odin`,
    `src/bridge/scene.odin`, `src/bridge/scratchpad.odin`,
-   `src/bridge/dynview.odin`, `src/julia/odin-julia-bridge.jl`).
+  `src/bridge/dynview_native_tex.odin`, `src/julia/odin-julia-bridge.jl`).
 1. Dynview runtime (`src/dynview/dynview.odin`, `src/dynview/compile/compile.odin`,
    `src/dynview/core/`, `src/dynview/math/`, `src/dynview/layout/`).
 1. Julia runtime entry (`src/julia/script.jl`).
@@ -61,11 +61,11 @@ If you are new, read in this order:
 | **Odin** | Core Definitions | Canonical runtime data shapes and capacity constants. | `src/core/core.odin` |
 | **Odin** | Rendering and UI | Frame loop wiring, world rendering, panel rendering, and interaction routing. | `src/view/view.odin`, `src/view/elements.odin`, `src/view/core/view_core.odin`, `src/view/core/isomath.odin`, `src/view/ui/ui.odin` |
 | **Odin** | Font Cache | Required JuliaMono/NewCM residency, MATH-table admission, demand-paged glyphs, asynchronous CPU preparation, display-thread publication, and source reload monitoring. | `src/view/font/font.odin`, `src/view/font/prepare.odin`, `src/view/font/async.odin`, `src/view/font/finalize.odin`, `src/view/font/watch.odin` |
-| **Odin** | Dynview Runtime | Text/math command compilation, layout planning, draw-ready caches, and a generation-tagged worker-owned NewCM shaping capability. | `src/dynview/dynview.odin`, `src/dynview/compile/compile.odin`, `src/dynview/core/`, `src/dynview/math/`, `src/dynview/layout/`, `src/dynview/tracking.odin` |
+| **Odin** | Dynview Runtime | Bounded TeX parsing, generation-scoped semantic documents, text/math compilation, layout planning, draw-ready caches, and a generation-tagged worker-owned NewCM shaping capability. | `src/dynview/dynview.odin`, `src/dynview/parse/`, `src/dynview/core/`, `src/dynview/compile/compile.odin`, `src/dynview/math/`, `src/dynview/layout/`, `src/dynview/tracking.odin` |
 | **Odin** | Geometry Kernel | Shapes, constraints, and system evolution/integration rules. | `src/shapes/shapes.odin`, `src/shapes/constraints.odin`, `src/shapes/system.odin` |
 | **Odin** | Semantic Evidence | Typed event schemas, producer-local rings, session policy, observations, scenarios, captures, exports, and artifacts. | `src/evidence/`, `src/view/scenario_runtime.odin`, `src/view/runtime_session.odin` |
 | **Odin** | Operational Diagnostics | Synchronized optional file logging for lifecycle, degradation, and failure investigation. | `src/diagnostics/`, `src/main.odin` |
-| **Odin** | Bridge and Embedding | Host-side Julia lifecycle and strict bridge ABI surface. | `src/bridge/abi.odin`, `src/bridge/abi-*.odin`, `src/bridge/bootstrap.odin`, `src/bridge/animations.odin`, `src/bridge/scene.odin`, `src/bridge/scratchpad.odin`, `src/bridge/dynview.odin` |
+| **Odin** | Bridge and Embedding | Host-side Julia lifecycle, strict bridge ABI, native TeX ingestion, and snapshot staging. | `src/bridge/abi.odin`, `src/bridge/abi-*.odin`, `src/bridge/bootstrap.odin`, `src/bridge/animations.odin`, `src/bridge/scene.odin`, `src/bridge/scratchpad.odin`, `src/bridge/dynview_native_tex.odin`, `src/bridge/dynview_runtime.odin` |
 | **Odin** | Julia Interop Dependency | External Odin<->Julia interop package consumed by bridge embedding code. | `src/julialib/julialib.odin` (git submodule) |
 | **Odin** | Assets and IO | Asset package extraction/path resolution and GIF output internals. | `src/files/files.odin`, `src/files/gif_encode.odin` |
 | **Odin** | Particles | Multi-layer particle systems and visual effects. | `src/particles/particles.odin` |
@@ -74,7 +74,7 @@ If you are new, read in this order:
 | **Julia** | Bridge Wrapper | Ergonomic Julia wrappers around bridge exports. | `src/julia/odin-julia-bridge.jl` |
 | **Julia** | Shared Animation Utilities | Reusable animation and geometry helper routines. | `src/julia/animations.jl`, `src/julia/geometry.jl`, `src/julia/nullanimation.jl` |
 | **Julia** | Interactive Runtime | Scratchpad/REPL session lifecycle, queueing, and evaluation flow. | `src/julia/scratchpad.jl`, `src/julia/euclidrepl.jl` |
-| **Julia** | LaTeX Compiler | Compiles LaTeX to dynview command instructions. | `src/julia/latex.jl`, `src/julia/latex/` |
+| **Julia** | LaTeX Facade | Submits source, fallback text, and presentation metadata to native Dynview APIs. | `src/julia/latex.jl`, `src/julia/latex/facade.jl` |
 | **Julia** | Content Modules | Domain content roots and leaf animation definitions. | `src/julia/elements/elements.jl`, `src/julia/proclus/proclus.jl`, `src/julia/hilbert/hilbert.jl` |
 
 Dynview production callers import the child package that owns each symbol. Root
@@ -199,29 +199,26 @@ Snapshot and display flow:
 
 ---
 
-## Dynamic LaTeX Pipeline (Julia Parse + Odin Layout)
+## Dynamic LaTeX Pipeline (Native Parse And Layout)
 
 Dynamic LaTeX support is now a first-class dynview path, not a special case.
-`src/julia/latex.jl` defines the `EuclidLatex` module and includes the parser,
-cache, compiler, document-mode, and dynview-math implementations from
-`src/julia/latex/`. Host import, measure, and draw live in `src/dynview/**`
-with bridge import boundaries in `src/bridge/dynview.odin`.
+`src/julia/latex.jl` exposes a stable authoring facade. It forwards source,
+authored fallback, and small presentation metadata through raw-source bridge
+requests. Dynview owns classification, bounded recursive-descent parsing,
+normalization, semantic storage, snapshot copying, measurement, and layout.
 
-### Parsing Algorithm (Julia)
-
-The `EuclidLatex` implementation uses a recursive-descent parser with
-normalization and payload compilation:
+### Native Ingestion
 
 | Stage | Implementation | Core functions | Result |
 | --- | --- | --- | --- |
-| Tokenize | `latex/lexer_parser.jl` | `tokenize_latex`, `read_command_token`, `read_text_token` | `LatexToken[]` stream |
-| Parse | `latex/lexer_parser.jl` | `parse_sequence`, `parse_atom`, `parse_command_atom`, `consume_scripts!` | `LatexRun[]` semantic tree |
-| Normalize | `latex/lexer_parser.jl` | `normalize_runs` and script canonicalization | Stable AST form |
-| Compile | `latex/compiler.jl`, `latex/dynview_math.jl` | `compile_emit_program`, `math_payload_ops_for_runs` | Recursive `MathPayloadOp[]` |
-| Serialize/Cache | `latex/compiler.jl`, `latex/cache.jl` | `resolve_cache_entry`, `latex_to_plain_text` | Cached parse + canonical fallback |
-| Bridge Encode | `latex/dynview_math.jl` | `bridge_math_payload_preorder!`, `replay_emit_math_block!` | Flat op stream + typed table descriptors + shared text blob |
+| Submit | `src/julia/latex/facade.jl` | `emit_latex_view_text!`, `replay_emit_math_block!` | Raw source plus presentation metadata |
+| Classify | `src/dynview/parse/document_grammar.odin` | `tex_classify_source_mode`, `tex_document_whole_math` | Document or math mode and root style |
+| Parse/lower | `src/dynview/parse/` | bounded cursor, document grammar, math grammar, semantic builders | Font-independent commands, programs, nodes, and table descriptors |
+| Intern | `src/dynview/core/document_store.odin` | `document_store_intern`, `document_store_resolve` | Immutable generation-scoped semantic document |
+| Stage | `src/bridge/dynview_native_tex.odin` | native document/math import | Pointer-free semantic records in worker staging |
+| Publish | `src/bridge/runtime_service.odin` | snapshot validation and publication | Immutable slot-owned semantic snapshot |
 
-Key parsing behavior now covered in tests includes nested scripts, accents,
+Native compatibility tests cover nested scripts, accents,
 radicals, fractions, stretch delimiters, matrix environments, declared operator
 names, and grouped mathematical alphabets.
 
@@ -230,42 +227,38 @@ names, and grouped mathematical alphabets.
 ```mermaid
 flowchart LR
     A[Julia source string]
-    B[src/julia/latex/lexer_parser.jl\nparse_latex]
-    C[LatexRun tree]
-    D[compile_emit_program\nMathPayloadOp tree]
-    E[bridge_math_payload_preorder!\nops + table descriptors + text blob]
-    F[Odin bridge\ndynview_math_block_from_ops]
-    G[Odin cache\nmath_programs/math_commands]
-    H[Odin dynview layout\nmeasure_math_program + layout_consume_math_block]
-    I[Rendered dynview math block]
-    J[Fallback plain text]
+  B[Thin raw-source facade]
+  C[Native classifier and parser]
+  D[Animation-generation document store]
+  E[Pointer-free view snapshot]
+  F[Worker shaping and layout]
+  G[Sealed display cache]
+  H[Rendered Dynview content]
+  I[Authored fallback]
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I
-    D --> J
+  A --> B --> C --> D --> E --> F --> G --> H
+  A --> I
+  I --> E
 ```
 
 ### Runtime Boundaries For LaTeX
 
 - Julia side:
-  - `replay_emit_math_block!` and `emit_latex_dynview!` emit recursive math
-    blocks through `dynview_math_block_from_ops`.
-  - Script attachments serialize base, superscript, and subscript programs as
-    distinct preorder branches. Radical degree programs use the secondary
-    branch; canonical text fields remain deterministic fallback content.
-  - `\operatorname` remains an upright Op atom; its starred form reuses the
-    no-growth large-operator limit policy without adding bridge fields.
-  - Mathematical alphabets map approved ASCII groups all-or-nothing to audited
-    Unicode scalars. They remain `Math_Glyph_Run` operations shaped and drawn by
-    the active NewCM generation rather than selecting text fallback faces.
-  - Matrix, array, and table-preset operations reference block-local typed table
-    descriptors. Descriptors carry bounded dimensions, explicit cell style and row
-    spacing policies, typed boundary gaps, rules, row additions, and 16 fixed
-    column-alignment entries; source strings remain fallback content only.
-  - Parse cache key is `(source, PARSER_GRAMMAR_VERSION, style_profile)`.
+  - `emit_latex_view_text!` sends complete source plus caller-authored fallback.
+  - `replay_emit_math_block!` sends one source fragment plus text, math,
+    mathematical-alphabet, and root-style metadata.
+  - Julia does not classify, parse, normalize, cache, or encode TeX semantics.
 - Odin side:
-  - `dynview_math_block_from_ops` validates spans, descriptor references, and
-    capacity, then transactionally imports child programs, commands, and table
-    descriptors. Rejected payloads restore all mutable import counters.
+  - The parser applies explicit source, work, depth, command, node, span, run,
+    and table limits before publishing semantics.
+  - The document store keys exact source bytes with grammar, semantic profile,
+    parse mode, and root style. Repeated source within one animation generation
+    resolves the same immutable document.
+  - Bridge staging checkpoints cover text, commands, programs, math commands,
+    and descriptors. Any parse, store, or capacity failure restores the complete
+    fragment and preserves the authored fallback.
+  - Snapshots copy semantic records into slot-owned arenas. Document-store handles
+    and animation-arena pointers never cross into display-owned state.
   - `src/dynview/math/programs.odin` measures script/large-op/fraction/radical/matrix
     structures before draw. It owns display, text, script, and script-script
     transitions, including cramped child state.
@@ -282,8 +275,8 @@ flowchart LR
     through bounded glyph-page demand and uses synthetic geometry only when font
     construction data is rejected or not yet resident.
 
-Practical effect: math layout is now data-driven from Julia but rendered with
-host-side deterministic metrics and fallback safety.
+Practical effect: Julia authors source and fallback policy; native Dynview owns
+the complete semantic and physical realization pipeline.
 
 ---
 
@@ -515,16 +508,12 @@ scaler. Stale generations, invalid spans, and pending glyphs reject the complete
 before the existing whole-run fallback draws; copy bytes and non-math paths are
 unchanged.
 
-Julia owns mathematical intent: atom and glue classes, recursive structure, delimiter
-and accent kinds, and independent operator growth and limit policies. The mirrored
-`BridgeDynviewMathOp` and `Bridge_Dynview_Math_Op` records use exact-width fields in
-the same order. Mirrored table descriptors use exact-width dimensions, cell style,
-row policy, fixed alignments, typed boundary lengths, and bounded rule counts; matrix
-operations carry block-local descriptor indexes.
-Odin validates every enum, text span, descriptor index, direct-child count, and bounded
-preorder subtree before importing commands; invalid input publishes no partial math
-program or descriptor. Recursive scripts, fraction branches, and radical degrees cross
-as child program identities rather than reparsed fallback text.
+Julia owns authored source, fallback content, and presentation metadata. Raw-source
+requests cross as mirrored by-value structs; recursive semantic records do not cross the
+language boundary. Native Dynview derives atom and glue classes, recursive structure,
+delimiter and accent kinds, operator policy, and typed table descriptors. It validates
+every source span, enum, descriptor index, and bounded tree relation before snapshot
+publication; invalid input publishes no partial document or math program.
 
 Odin alone owns font-sensitive decisions. A worker-borrowed Math_Regular capability
 provides one immutable generation-stamped constants snapshot plus bounded glyph

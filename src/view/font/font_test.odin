@@ -180,6 +180,7 @@ view_test_math_seed_and_table :: proc(t: ^testing.T) {
     codepoints := math_seed_codepoint_set()
     testing.expect(t, codepoints.count > 0)
     testing.expect(t, codepoints.count <= FONT_SEED_CODEPOINT_CAPACITY)
+    testing.expect(t, codepoints.count <= len(Font_Prepare_Task{}.codepoints))
     testing.expect_value(t, codepoints.values[0], rune(0x0020))
 
     path := "assets/NewCMSansMath-Regular.otf"

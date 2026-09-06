@@ -12,7 +12,7 @@ import "core:path/filepath"
 import rl "vendor:raylib"
 
 // Maximum runes in either required startup seed policy.
-FONT_SEED_CODEPOINT_CAPACITY :: 512
+FONT_SEED_CODEPOINT_CAPACITY :: core.FONT_SEED_CODEPOINT_CAPACITY
 
 // Maximum face glyphs admitted to one prepared atlas page.
 FONT_GLYPH_PAGE_REQUEST_CAPACITY :: 256

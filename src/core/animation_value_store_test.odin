@@ -3,14 +3,32 @@ package core
 import "core:mem"
 import "core:testing"
 
+//   Initialize one value store and its shared-memory owner for focused tests.
+animation_value_store_test_init :: proc(
+    memory: ^Animation_Memory,
+    store: ^Animation_Value_Store,
+    generation: u64) -> bool {
+    return animation_memory_init(memory) &&
+        animation_value_store_init(store, memory) &&
+        animation_memory_begin_generation(memory, generation) == .Ok &&
+        animation_value_store_begin_generation(store, generation) == .Ok
+}
+
+//   Destroy one focused value-store fixture in borrower-before-owner order.
+animation_value_store_test_destroy :: proc(
+    memory: ^Animation_Memory,
+    store: ^Animation_Value_Store) {
+    animation_value_store_destroy(store)
+    animation_memory_destroy(memory)
+}
+
 //   Verify duplicate sets overwrite one bound entry without additional allocation.
 @(test)
 core_test_animation_value_store_overwrites_bound_key :: proc(t: ^testing.T) {
+    memory: Animation_Memory
     store: Animation_Value_Store
-    testing.expect(t, animation_value_store_init(&store))
-    defer animation_value_store_destroy(&store)
-    testing.expect_value(t, animation_value_store_begin_generation(
-        &store, 1), Animation_Value_Status.Ok)
+    testing.expect(t, animation_value_store_test_init(&memory, &store, 1))
+    defer animation_value_store_test_destroy(&memory, &store)
     testing.expect_value(t, animation_value_store_set(
         &store, {1, 7, 11, 12}, []u8{1, 2}), Animation_Value_Status.Ok)
     before := animation_value_store_diagnostics(&store)
@@ -29,10 +47,10 @@ core_test_animation_value_store_overwrites_bound_key :: proc(t: ^testing.T) {
 //   Verify schema and size drift reject mutation of an existing binding.
 @(test)
 core_test_animation_value_store_rejects_schema_drift :: proc(t: ^testing.T) {
+    memory: Animation_Memory
     store: Animation_Value_Store
-    testing.expect(t, animation_value_store_init(&store))
-    defer animation_value_store_destroy(&store)
-    _ = animation_value_store_begin_generation(&store, 3)
+    testing.expect(t, animation_value_store_test_init(&memory, &store, 3))
+    defer animation_value_store_test_destroy(&memory, &store)
     _ = animation_value_store_set(&store, {3, 1, 5, 6}, []u8{9, 8})
 
     testing.expect_value(t, animation_value_store_set(
@@ -48,10 +66,10 @@ core_test_animation_value_store_rejects_schema_drift :: proc(t: ^testing.T) {
 //   Verify per-value and aggregate FFI quotas reject before canonical mutation.
 @(test)
 core_test_animation_value_store_rejects_quota_overflow :: proc(t: ^testing.T) {
+    memory: Animation_Memory
     store: Animation_Value_Store
-    testing.expect(t, animation_value_store_init(&store))
-    defer animation_value_store_destroy(&store)
-    _ = animation_value_store_begin_generation(&store, 4)
+    testing.expect(t, animation_value_store_test_init(&memory, &store, 4))
+    defer animation_value_store_test_destroy(&memory, &store)
     oversized: [ANIMATION_VALUE_MAX_PAYLOAD_BYTES + 1]u8
     testing.expect_value(t, animation_value_store_set(
         &store, {4, 1, 1, 1}, oversized[:]), Animation_Value_Status.Invalid_Argument)
@@ -72,13 +90,15 @@ core_test_animation_value_store_rejects_quota_overflow :: proc(t: ^testing.T) {
 //   Verify generation reset retires keys, reuses the first block, and keeps peaks.
 @(test)
 core_test_animation_value_store_resets_generation :: proc(t: ^testing.T) {
+    memory: Animation_Memory
     store: Animation_Value_Store
-    testing.expect(t, animation_value_store_init(&store))
-    defer animation_value_store_destroy(&store)
-    _ = animation_value_store_begin_generation(&store, 8)
+    testing.expect(t, animation_value_store_test_init(&memory, &store, 8))
+    defer animation_value_store_test_destroy(&memory, &store)
     _ = animation_value_store_set(&store, {8, 9, 2, 3}, []u8{4, 5, 6})
     before := animation_value_store_diagnostics(&store)
 
+    testing.expect_value(t, animation_memory_begin_generation(
+        &memory, 9), Animation_Memory_Status.Ok)
     testing.expect_value(t, animation_value_store_begin_generation(
         &store, 9), Animation_Value_Status.Ok)
     after := animation_value_store_diagnostics(&store)
@@ -99,28 +119,30 @@ core_test_animation_value_store_resets_generation :: proc(t: ^testing.T) {
 //   Verify destruction releases backing storage and retains terminal high waters.
 @(test)
 core_test_animation_value_store_destroy_preserves_diagnostics :: proc(t: ^testing.T) {
+    memory: Animation_Memory
     store: Animation_Value_Store
-    testing.expect(t, animation_value_store_init(&store))
-    _ = animation_value_store_begin_generation(&store, 12)
+    testing.expect(t, animation_value_store_test_init(&memory, &store, 12))
     _ = animation_value_store_set(&store, {12, 1, 1, 2}, []u8{3})
     before := animation_value_store_diagnostics(&store)
 
     animation_value_store_destroy(&store)
+    animation_memory_destroy(&memory)
     after := animation_value_store_diagnostics(&store)
     testing.expect(t, !after.initialized)
     testing.expect_value(t, after.entry_count, 0)
     testing.expect_value(t, after.arena.current_reserved, uint(0))
-    testing.expect_value(t, after.arena.peak_used, before.arena.peak_used)
-    testing.expect_value(t, after.arena.destroy_count, u64(1))
+    owner_after := animation_memory_diagnostics(&memory)
+    testing.expect_value(t, owner_after.peak_used, before.arena.peak_used)
+    testing.expect_value(t, owner_after.destroy_count, u64(1))
 }
 
 //   Verify packed snapshots remain immutable after canonical overwrite.
 @(test)
 core_test_animation_value_snapshot_is_immutable :: proc(t: ^testing.T) {
+    memory: Animation_Memory
     store: Animation_Value_Store
-    testing.expect(t, animation_value_store_init(&store))
-    defer animation_value_store_destroy(&store)
-    _ = animation_value_store_begin_generation(&store, 4)
+    testing.expect(t, animation_value_store_test_init(&memory, &store, 4))
+    defer animation_value_store_test_destroy(&memory, &store)
     identity := Animation_Value_Identity{4, 2, 7, 8}
     _ = animation_value_store_set(&store, identity, []u8{1, 2})
     snapshot: Animation_Value_Snapshot

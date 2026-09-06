@@ -345,7 +345,7 @@ scenario_arena_snapshot :: proc(
     #partial switch kind {
     case .Animation:
         scenario_add_arena_diagnostics(&snapshot,
-            core.arena_owner_diagnostics(&state^.animation_values.arena_owner))
+            core.animation_memory_diagnostics(&state^.animation_memory))
     case .Snapshot_Slots:
         for &slot in state^.julia_runtime_service^.view_snapshots {
             scenario_add_arena_diagnostics(

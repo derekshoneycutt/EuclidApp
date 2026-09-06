@@ -56,63 +56,30 @@ macro ccall(expression)
     return esc(:(Base.@ccall $rewritten))
 end
 
-struct BridgeDynviewMathOp
-    kind::Int32
-    atom_class::Int32
-    glue_kind::Int32
-    style_id::Int32
-    child_program_id::Int32
-    secondary_child_program_id::Int32
-    tertiary_child_program_id::Int32
-    script_style_id::Int32
-    accent_style_id::Int32
-    accent_mode::Int32
-    radical_mode::Int32
-    large_op_kind::Int32
-    operator_growth::Int32
-    operator_limits::Int32
-    table_descriptor_index::Int32
-    text_offset::Int32
-    text_len::Int32
-    index_text_offset::Int32
-    index_text_len::Int32
-    sup_text_offset::Int32
-    sup_text_len::Int32
-    sub_text_offset::Int32
-    sub_text_len::Int32
-    script_scale::Float32
-    script_sup_raise::Float32
-    script_sub_drop::Float32
-    script_gap::Float32
-    accent_thickness::Float32
-    accent_offset::Float32
+"""
+Raw document text and presentation metadata for one native bridge transaction.
+
+Mirrors the Odin `Bridge_Dynview_Document_Request` ABI struct field-for-field.
+"""
+struct BridgeDynviewDocumentRequest
+    source::Cstring
+    fallback::Cstring
+    block_kind::Int32
+    block_id::Int32
+    text_style::Int32
 end
 
 """
-Typed table length resolved by native layout against the active font metrics.
+Raw math text and presentation metadata for one native bridge transaction.
 
-Mirrors the Odin `Bridge_Dynview_Math_Length` ABI struct field-for-field.
+Mirrors the Odin `Bridge_Dynview_Math_Request` ABI struct field-for-field.
 """
-struct BridgeDynviewMathLength
-    value::Float32
-    unit::Int32
-end
-
-"""
-Fixed-capacity semantic metadata for one table-like math operation.
-
-Mirrors the Odin `Bridge_Dynview_Math_Table_Descriptor` ABI struct field-for-field.
-"""
-struct BridgeDynviewMathTableDescriptor
-    rows::Int32
-    columns::Int32
-    cell_style::Int32
-    row_spacing::Int32
-    column_alignments::NTuple{16,Int32}
-    column_boundary_gaps::NTuple{17,BridgeDynviewMathLength}
-    vertical_rule_counts::NTuple{17,Int32}
-    row_extra_gaps::NTuple{16,BridgeDynviewMathLength}
-    horizontal_rule_counts::NTuple{17,Int32}
+struct BridgeDynviewMathRequest
+    source::Cstring
+    text_style::Int32
+    math_style::Int32
+    mathbb_style::Int32
+    root_style::Int32
 end
 
 struct BridgeColor
@@ -168,19 +135,6 @@ Mirrors the Odin `Bridge_Pie_Colors` ABI struct field-for-field.
 struct BridgePieColors
     fill::BridgeColor
     arc::BridgeColor
-end
-
-"""
-Flat op payload for one inline math block.
-
-Mirrors the Odin `Bridge_Dynview_Math_Program` ABI struct field-for-field.
-"""
-struct BridgeDynviewMathProgram
-    ops::Ptr{BridgeDynviewMathOp}
-    op_count::Int32
-    top_level_op_count::Int32
-    table_descriptors::Ptr{BridgeDynviewMathTableDescriptor}
-    table_descriptor_count::Int32
 end
 
 """
@@ -447,43 +401,8 @@ const BRIDGE_DYNVIEW_STYLE_BLACK = Int32(16)
 const BRIDGE_DYNVIEW_STYLE_UNDERLINE = Int32(17)
 const BRIDGE_DYNVIEW_STYLE_INLINE_ATOM = Int32(20)
 const BRIDGE_DYNVIEW_STYLE_CUSTOM_FONT = Int32(1 << 24)
-const BRIDGE_DYNVIEW_ACCENT_MODE_OVERLINE = Int32(1)
-const BRIDGE_DYNVIEW_ACCENT_MODE_UNDERLINE = Int32(2)
-const BRIDGE_DYNVIEW_ACCENT_MODE_HAT = Int32(3)
-const BRIDGE_DYNVIEW_ACCENT_MODE_TILDE = Int32(4)
-const BRIDGE_DYNVIEW_ACCENT_MODE_VEC = Int32(5)
-const BRIDGE_DYNVIEW_ACCENT_MODE_DOT = Int32(6)
-const BRIDGE_DYNVIEW_ACCENT_MODE_DDOT = Int32(7)
-const BRIDGE_DYNVIEW_ACCENT_MODE_BAR = Int32(8)
-const BRIDGE_DYNVIEW_ACCENT_MODE_CHECK = Int32(9)
-const BRIDGE_DYNVIEW_ACCENT_MODE_BREVE = Int32(10)
-const BRIDGE_DYNVIEW_ACCENT_MODE_ACUTE = Int32(11)
-const BRIDGE_DYNVIEW_ACCENT_MODE_GRAVE = Int32(12)
-const BRIDGE_DYNVIEW_ACCENT_MODE_RING = Int32(13)
-const BRIDGE_DYNVIEW_ACCENT_MODE_OVERBRACE = Int32(14)
-const BRIDGE_DYNVIEW_ACCENT_MODE_UNDERBRACE = Int32(15)
-const BRIDGE_DYNVIEW_RADICAL_MODE_SQRT = Int32(1)
-const BRIDGE_DYNVIEW_RADICAL_MODE_NTHROOT = Int32(2)
-const BRIDGE_DYNVIEW_LARGE_OP_KIND_SUM = Int32(1)
-const BRIDGE_DYNVIEW_LARGE_OP_KIND_PROD = Int32(2)
-const BRIDGE_DYNVIEW_LARGE_OP_KIND_INT = Int32(3)
-const BRIDGE_DYNVIEW_LARGE_OP_KIND_LIM = Int32(4)
-const BRIDGE_DYNVIEW_LARGE_OP_KIND_NARY = Int32(5)
-const BRIDGE_DYNVIEW_MATH_ATOM_NONE = Int32(0)
-const BRIDGE_DYNVIEW_MATH_ATOM_ORD = Int32(1)
-const BRIDGE_DYNVIEW_MATH_ATOM_OP = Int32(2)
-const BRIDGE_DYNVIEW_MATH_ATOM_BIN = Int32(3)
-const BRIDGE_DYNVIEW_MATH_ATOM_REL = Int32(4)
-const BRIDGE_DYNVIEW_MATH_ATOM_OPEN = Int32(5)
-const BRIDGE_DYNVIEW_MATH_ATOM_CLOSE = Int32(6)
-const BRIDGE_DYNVIEW_MATH_ATOM_PUNCT = Int32(7)
-const BRIDGE_DYNVIEW_MATH_ATOM_INNER = Int32(8)
-const BRIDGE_DYNVIEW_MATH_GLUE_NONE = Int32(0)
-const BRIDGE_DYNVIEW_MATH_GLUE_THICK = Int32(1)
-const BRIDGE_DYNVIEW_MATH_GLUE_SPACE = Int32(2)
-const BRIDGE_DYNVIEW_MATH_GLUE_NEGATIVE_THIN = Int32(3)
-const BRIDGE_DYNVIEW_MATH_GLUE_QUAD = Int32(4)
-const BRIDGE_DYNVIEW_MATH_GLUE_THIN = Int32(5)
+const BRIDGE_DYNVIEW_MATH_ROOT_DISPLAY = Int32(0)
+const BRIDGE_DYNVIEW_MATH_ROOT_TEXT = Int32(1)
 const BRIDGE_DYNVIEW_DELIMITER_KIND_NONE = Int32(0)
 const BRIDGE_DYNVIEW_DELIMITER_KIND_LEFT_PAREN = Int32(1)
 const BRIDGE_DYNVIEW_DELIMITER_KIND_RIGHT_PAREN = Int32(2)

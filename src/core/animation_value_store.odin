@@ -1,8 +1,8 @@
 package core
 
+import "base:runtime"
 import "core:mem"
 
-ANIMATION_VALUE_ARENA_RESERVATION :: uint(mem.Megabyte)
 ANIMATION_VALUE_ENTRY_CAPACITY :: 256
 ANIMATION_VALUE_MAX_PAYLOAD_BYTES :: 16*int(mem.Kilobyte)
 ANIMATION_VALUE_TOTAL_PAYLOAD_BYTES :: 64*int(mem.Kilobyte)
@@ -88,10 +88,11 @@ Animation_Value_Store_Diagnostics :: struct {
     arena : Arena_Owner_Diagnostics,
 }
 
-// Own canonical opaque animation values for one active animation generation.
+// Index canonical opaque values allocated from shared animation memory.
 Animation_Value_Store :: struct {
-    // Bulk storage owner and fixed deterministic key index.
-    arena_owner : Arena_Owner,
+    // Borrowed storage and fixed deterministic key index.
+    memory : ^Animation_Memory,
+    allocator : runtime.Allocator,
     entries : [ANIMATION_VALUE_ENTRY_CAPACITY]Animation_Value_Entry,
 
     // Current generation identity and logical FFI quota usage.
@@ -109,21 +110,27 @@ Animation_Value_Store :: struct {
     initialized : bool,
 }
 
-//   Initialize one canonical animation store and its growing arena.
+//   Initialize one canonical animation store over shared animation memory.
 //
 // Parameters:
 //   - store: Zero or destroyed store state to initialize.
+//   - memory: Initialized owner that outlives the store.
 //
 // Returns:
-//   - True after complete arena initialization; false without live publication.
-animation_value_store_init :: proc(store: ^Animation_Value_Store) -> bool {
-    if store == nil || store.initialized {
+//   - True after binding borrowed storage; false without live publication.
+animation_value_store_init :: proc(
+    store: ^Animation_Value_Store,
+    memory: ^Animation_Memory) -> bool {
+    if store == nil || store.initialized || memory == nil || !memory.initialized {
         return false
     }
     store^ = {}
-    if !arena_owner_init(&store.arena_owner, ANIMATION_VALUE_ARENA_RESERVATION) {
+    allocator := animation_memory_allocator(memory)
+    if allocator == (runtime.Allocator{}) {
         return false
     }
+    store.memory = memory
+    store.allocator = allocator
     store.initialized = true
     return true
 }
@@ -137,26 +144,46 @@ animation_value_store_init :: proc(store: ^Animation_Value_Store) -> bool {
 // Returns:
 //   - `Ok` after bulk retirement, or a rejection without mutation.
 //
-// Side effects:
-//   - Invalidates every previously returned payload view.
+// Notes:
+//   - The owner must reset shared memory before publishing this generation.
 animation_value_store_begin_generation :: proc(
     store: ^Animation_Value_Store,
     generation: u64) -> Animation_Value_Status {
-    if store == nil || !store.initialized {
+    if store == nil || !store.initialized || store.memory == nil ||
+        store.memory.generation != generation {
         return .Illegal_State
     }
     if generation == 0 {
         return .Invalid_Argument
     }
-    arena_owner_reset(&store.arena_owner)
+    animation_value_store_clear_generation(store)
+    animation_value_store_publish_generation(store, generation)
+    return .Ok
+}
+
+//   Clear the fixed value index before shared animation memory is reset.
+animation_value_store_clear_generation :: proc(store: ^Animation_Value_Store) {
+    if store == nil || !store.initialized {
+        return
+    }
     for index in 0..<store.entry_count {
         store.entries[index] = {}
     }
-    store.generation = generation
+    store.generation = 0
     store.entry_count = 0
     store.payload_bytes = 0
+}
+
+//   Publish one generation already established by the shared memory owner.
+animation_value_store_publish_generation :: proc(
+    store: ^Animation_Value_Store,
+    generation: u64) {
+    if store == nil || !store.initialized || store.memory == nil ||
+        store.memory.generation != generation {
+        return
+    }
+    store.generation = generation
     store.generation_resets += 1
-    return .Ok
 }
 
 //   Set one schema-bound opaque value in the current generation.
@@ -399,7 +426,7 @@ animation_value_pending_allocate_storage :: proc(
         return nil, .Ok
     }
     storage, allocation_error := make(
-        []u8, new_payload_bytes, store.arena_owner.allocator)
+        []u8, new_payload_bytes, store.allocator)
     if allocation_error != nil {
         store.allocation_failures += 1
         return nil, .Allocation_Failed
@@ -554,18 +581,19 @@ animation_value_packed_schema_matches :: proc(
         int(entry.payload_size) == payload_size
 }
 
-//   Destroy arena storage after all Julia animation work has stopped.
+//   Detach one store after all readers have stopped.
 //
 // Side effects:
-//   - Invalidates every canonical payload and preserves terminal diagnostics.
+//   - Clears canonical metadata without resetting or destroying shared memory.
 animation_value_store_destroy :: proc(store: ^Animation_Value_Store) {
     if store == nil || !store.initialized {
         return
     }
-    arena_owner_destroy(&store.arena_owner)
     for index in 0..<store.entry_count {
         store.entries[index] = {}
     }
+    store.memory = nil
+    store.allocator = {}
     store.generation = 0
     store.entry_count = 0
     store.payload_bytes = 0
@@ -589,7 +617,7 @@ animation_value_store_diagnostics :: proc(
         schema_rejections = store.schema_rejections,
         allocation_failures = store.allocation_failures,
         generation_resets = store.generation_resets,
-        arena = arena_owner_diagnostics(&store.arena_owner),
+        arena = animation_memory_diagnostics(store.memory),
     }
 }
 
@@ -633,7 +661,7 @@ animation_value_store_insert :: proc(
         return .Out_Of_Capacity
     }
     storage, allocation_error := make(
-        []u8, len(payload), store.arena_owner.allocator)
+        []u8, len(payload), store.allocator)
     if allocation_error != nil {
         store.allocation_failures += 1
         return .Allocation_Failed

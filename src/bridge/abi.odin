@@ -67,34 +67,9 @@ BRIDGE_DYNVIEW_STYLE_UNDERLINE :: 17
 BRIDGE_DYNVIEW_STYLE_INLINE_ATOM :: 20
 BRIDGE_DYNVIEW_STYLE_CUSTOM_FONT :: (1 << 24)
 
-BRIDGE_DYNVIEW_ACCENT_MODE_OVERLINE :: 1
-BRIDGE_DYNVIEW_ACCENT_MODE_UNDERLINE :: 2
-BRIDGE_DYNVIEW_ACCENT_MODE_HAT :: 3
-BRIDGE_DYNVIEW_ACCENT_MODE_TILDE :: 4
-BRIDGE_DYNVIEW_ACCENT_MODE_VEC :: 5
-BRIDGE_DYNVIEW_ACCENT_MODE_DOT :: 6
-BRIDGE_DYNVIEW_ACCENT_MODE_DDOT :: 7
-BRIDGE_DYNVIEW_ACCENT_MODE_BAR :: 8
-BRIDGE_DYNVIEW_ACCENT_MODE_CHECK :: 9
-BRIDGE_DYNVIEW_ACCENT_MODE_BREVE :: 10
-BRIDGE_DYNVIEW_ACCENT_MODE_ACUTE :: 11
-BRIDGE_DYNVIEW_ACCENT_MODE_GRAVE :: 12
-BRIDGE_DYNVIEW_ACCENT_MODE_RING :: 13
-BRIDGE_DYNVIEW_ACCENT_MODE_OVERBRACE :: 14
-BRIDGE_DYNVIEW_ACCENT_MODE_UNDERBRACE :: 15
-BRIDGE_DYNVIEW_RADICAL_MODE_SQRT :: 1
-BRIDGE_DYNVIEW_RADICAL_MODE_NTHROOT :: 2
-BRIDGE_DYNVIEW_LARGE_OP_KIND_SUM :: 1
-BRIDGE_DYNVIEW_LARGE_OP_KIND_PROD :: 2
-BRIDGE_DYNVIEW_LARGE_OP_KIND_INT :: 3
-BRIDGE_DYNVIEW_LARGE_OP_KIND_LIM :: 4
-BRIDGE_DYNVIEW_LARGE_OP_KIND_NARY :: 5
-BRIDGE_DYNVIEW_LARGE_OP_KIND_MAX :: BRIDGE_DYNVIEW_LARGE_OP_KIND_NARY
-BRIDGE_DYNVIEW_OPERATOR_GROWTH_NONE :: 0
-BRIDGE_DYNVIEW_OPERATOR_GROWTH_DISPLAY :: 1
-BRIDGE_DYNVIEW_OPERATOR_LIMITS_NONE :: 0
-BRIDGE_DYNVIEW_OPERATOR_LIMITS_SIDE :: 1
-BRIDGE_DYNVIEW_OPERATOR_LIMITS_STACKED :: 2
+BRIDGE_DYNVIEW_MATH_ROOT_DISPLAY :: 0
+BRIDGE_DYNVIEW_MATH_ROOT_TEXT :: 1
+
 BRIDGE_DYNVIEW_DELIMITER_KIND_NONE :: 0
 BRIDGE_DYNVIEW_DELIMITER_KIND_LEFT_PAREN :: 1
 BRIDGE_DYNVIEW_DELIMITER_KIND_RIGHT_PAREN :: 2
@@ -110,38 +85,6 @@ BRIDGE_DYNVIEW_DELIMITER_KIND_LEFT_FLOOR :: 11
 BRIDGE_DYNVIEW_DELIMITER_KIND_RIGHT_FLOOR :: 12
 BRIDGE_DYNVIEW_DELIMITER_KIND_LEFT_ANGLE :: 13
 BRIDGE_DYNVIEW_DELIMITER_KIND_RIGHT_ANGLE :: 14
-
-BRIDGE_DYNVIEW_MATH_OP_TEXT_RUN :: 1
-BRIDGE_DYNVIEW_MATH_OP_MATH_GLYPH_RUN :: 2
-BRIDGE_DYNVIEW_MATH_OP_ACCENT_BAR_RECURSIVE :: 3
-BRIDGE_DYNVIEW_MATH_OP_RADICAL_BAR_RECURSIVE :: 4
-BRIDGE_DYNVIEW_MATH_OP_SCRIPT_ATTACH_RECURSIVE :: 5
-BRIDGE_DYNVIEW_MATH_OP_LARGE_OP_RECURSIVE :: 6
-BRIDGE_DYNVIEW_MATH_OP_FRACTION_RECURSIVE :: 7
-BRIDGE_DYNVIEW_MATH_OP_STRETCH_DELIMITER_RECURSIVE :: 8
-BRIDGE_DYNVIEW_MATH_OP_MATRIX_RECURSIVE :: 9
-BRIDGE_DYNVIEW_MATH_OP_STYLE_OVERRIDE_RECURSIVE :: 10
-BRIDGE_DYNVIEW_MATH_OP_STACK_RECURSIVE :: 11
-BRIDGE_DYNVIEW_MATH_OP_MAX :: BRIDGE_DYNVIEW_MATH_OP_STACK_RECURSIVE
-
-BRIDGE_DYNVIEW_MATH_ATOM_NONE :: 0
-BRIDGE_DYNVIEW_MATH_ATOM_ORD :: 1
-BRIDGE_DYNVIEW_MATH_ATOM_OP :: 2
-BRIDGE_DYNVIEW_MATH_ATOM_BIN :: 3
-BRIDGE_DYNVIEW_MATH_ATOM_REL :: 4
-BRIDGE_DYNVIEW_MATH_ATOM_OPEN :: 5
-BRIDGE_DYNVIEW_MATH_ATOM_CLOSE :: 6
-BRIDGE_DYNVIEW_MATH_ATOM_PUNCT :: 7
-BRIDGE_DYNVIEW_MATH_ATOM_INNER :: 8
-BRIDGE_DYNVIEW_MATH_ATOM_MAX :: BRIDGE_DYNVIEW_MATH_ATOM_INNER
-
-BRIDGE_DYNVIEW_MATH_GLUE_NONE :: 0
-BRIDGE_DYNVIEW_MATH_GLUE_THICK :: 1
-BRIDGE_DYNVIEW_MATH_GLUE_SPACE :: 2
-BRIDGE_DYNVIEW_MATH_GLUE_NEGATIVE_THIN :: 3
-BRIDGE_DYNVIEW_MATH_GLUE_QUAD :: 4
-BRIDGE_DYNVIEW_MATH_GLUE_THIN :: 5
-BRIDGE_DYNVIEW_MATH_GLUE_MAX :: BRIDGE_DYNVIEW_MATH_GLUE_THIN
 
 BRIDGE_DYNVIEW_FONT_FLAG_NONE :: i32(core.Font_Variant_Flags.None)
 BRIDGE_DYNVIEW_FONT_FLAG_ITALIC :: i32(core.Font_Variant_Flags.Italic)
@@ -178,63 +121,22 @@ Bridge_Triangle_Colors :: core.Bridge_Triangle_Colors
 Bridge_Box_Edge_Colors :: core.Bridge_Box_Edge_Colors
 Bridge_Pie_Colors :: core.Bridge_Pie_Colors
 
-Bridge_Dynview_Math_Op :: struct {
-    kind: i32,
-    atom_class: i32,
-    glue_kind: i32,
-    style_id: i32,
-    child_program_id: i32,
-    secondary_child_program_id: i32,
-    tertiary_child_program_id: i32,
-    script_style_id: i32,
-    accent_style_id: i32,
-    accent_mode: i32,
-    radical_mode: i32,
-    large_op_kind: i32,
-    operator_growth: i32,
-    operator_limits: i32,
-    table_descriptor_index: i32,
-    text_offset: i32,
-    text_len: i32,
-    index_text_offset: i32,
-    index_text_len: i32,
-    sup_text_offset: i32,
-    sup_text_len: i32,
-    sub_text_offset: i32,
-    sub_text_len: i32,
-    script_scale: f32,
-    script_sup_raise: f32,
-    script_sub_drop: f32,
-    script_gap: f32,
-    accent_thickness: f32,
-    accent_offset: f32,
+// Carry raw document text and presentation metadata across the Julia C ABI.
+Bridge_Dynview_Document_Request :: struct {
+    source: cstring,
+    fallback: cstring,
+    block_kind: i32,
+    block_id: i32,
+    text_style: i32,
 }
 
-Bridge_Dynview_Math_Table_Descriptor :: struct {
-    rows: i32,
-    columns: i32,
-    cell_style: i32,
-    row_spacing: i32,
-    column_alignments: [16]i32,
-    column_boundary_gaps: [17]Bridge_Dynview_Math_Length,
-    vertical_rule_counts: [17]i32,
-    row_extra_gaps: [16]Bridge_Dynview_Math_Length,
-    horizontal_rule_counts: [17]i32,
-}
-
-Bridge_Dynview_Math_Length :: struct {
-    value: f32,
-    unit: i32,
-}
-
-//   Flat op payload for one inline math block, grouped so the C export
-//   signature stays within the bridge parameter budget.
-Bridge_Dynview_Math_Program :: struct {
-    ops:                [^]Bridge_Dynview_Math_Op,
-    op_count:           i32,
-    top_level_op_count: i32,
-    table_descriptors:  [^]Bridge_Dynview_Math_Table_Descriptor,
-    table_descriptor_count: i32,
+// Carry raw math text and presentation metadata across the Julia C ABI.
+Bridge_Dynview_Math_Request :: struct {
+    source: cstring,
+    text_style: i32,
+    math_style: i32,
+    mathbb_style: i32,
+    root_style: i32,
 }
 
 Bridge_Point_View :: struct {
