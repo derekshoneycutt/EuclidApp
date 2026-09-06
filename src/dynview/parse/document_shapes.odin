@@ -298,36 +298,20 @@ tex_document_option_color :: proc(
     return tex_document_resolve_color(value)
 }
 
-//   Resolve fixture and standard LaTeX colors into deterministic RGBA bytes.
+//   Resolve Colors.jl names and Euclid's explicit Julia-logo aliases.
 tex_document_resolve_color :: proc(name: string) -> (Tex_Document_Color, bool) {
-    color := Tex_Document_Color{present = true, alpha = 255}
-    switch name {
-    case "black": color.red, color.green, color.blue = 0, 0, 0
-    case "blue": color.red, color.green, color.blue = 0, 0, 255
-    case "red": color.red, color.green, color.blue = 255, 0, 0
-    case "green": color.red, color.green, color.blue = 0, 255, 0
-    case "white": color.red, color.green, color.blue = 255, 255, 255
-    case: return tex_document_resolve_extended_color(name)
+    for named in TEX_NAMED_COLORS {
+        if named.name == name {
+            return {
+                red = named.red,
+                green = named.green,
+                blue = named.blue,
+                alpha = 255,
+                present = true,
+            }, true
+        }
     }
-    return color, true
-}
-
-//   Resolve project and authored-content colors outside the basic LaTeX set.
-tex_document_resolve_extended_color :: proc(
-    name: string) -> (Tex_Document_Color, bool) {
-    color := Tex_Document_Color{present = true, alpha = 255}
-    switch name {
-    case "steelblue": color.red, color.green, color.blue = 70, 130, 180
-    case "khaki3": color.red, color.green, color.blue = 205, 198, 115
-    case "palevioletred1": color.red, color.green, color.blue = 255, 130, 171
-    case "grey": color.red, color.green, color.blue = 128, 128, 128
-    case "grey60": color.red, color.green, color.blue = 153, 153, 153
-    case "plum1": color.red, color.green, color.blue = 255, 187, 255
-    case "lightgreen": color.red, color.green, color.blue = 144, 238, 144
-    case "firebrick": color.red, color.green, color.blue = 178, 34, 34
-    case: return tex_document_resolve_project_color(name)
-    }
-    return color, true
+    return tex_document_resolve_project_color(name)
 }
 
 //   Resolve Euclid's named Julia palette into deterministic RGBA bytes.

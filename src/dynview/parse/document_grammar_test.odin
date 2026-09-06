@@ -73,19 +73,42 @@ tex_parse_document_matches_shapes_fixture :: proc(t: ^testing.T) {
     testing.expect_value(t, semicircle.end_angle, f32(180))
 }
 
-//   Verify every literal color used by authored TeX shape commands remains supported.
+//   Verify the complete generated Colors.jl registry and explicit Julia aliases.
 @(test)
-tex_parse_document_accepts_authored_shape_colors :: proc(t: ^testing.T) {
-    names := [?]string{
-        "steelblue", "khaki3", "palevioletred1", "grey", "grey60",
-        "plum1", "lightgreen", "firebrick",
+tex_parse_document_accepts_named_shape_colors :: proc(t: ^testing.T) {
+    testing.expect_value(t, len(TEX_NAMED_COLORS), 666)
+    cases := [?]struct {
+        name: string,
+        red, green, blue: u8,
+    }{
+        {"aliceblue", 240, 248, 255},
+        {"antiquewhite4", 139, 131, 120},
+        {"gray0", 0, 0, 0},
+        {"gray100", 255, 255, 255},
+        {"grey60", 153, 153, 153},
+        {"rebeccapurple", 102, 51, 153},
+        {"yellowgreen", 154, 205, 50},
+        {"julia_blue", 64, 99, 216},
+        {"julia_green", 56, 152, 38},
+        {"julia_purple", 149, 88, 178},
+        {"julia_red", 203, 60, 51},
     }
     output := tex_math_test_output()
     defer free(output)
-    for name in names {
-        _, ok := tex_document_resolve_color(name)
+    for test_case in cases {
+        color, ok := tex_document_resolve_color(test_case.name)
         testing.expect(t, ok)
+        testing.expect_value(t, color.red, test_case.red)
+        testing.expect_value(t, color.green, test_case.green)
+        testing.expect_value(t, color.blue, test_case.blue)
     }
+    testing.expect_value(t, tex_parse_document(
+        "\\euclidcircle[color=rebeccapurple,size=2]", output),
+        Tex_Parse_Status.Ok)
+    shape := output.document_runs[0].shape
+    testing.expect_value(t, shape.color.red, u8(102))
+    testing.expect_value(t, shape.color.green, u8(51))
+    testing.expect_value(t, shape.color.blue, u8(153))
 }
 
 //   Verify forced and paragraph breaks collapse to one blank line.
