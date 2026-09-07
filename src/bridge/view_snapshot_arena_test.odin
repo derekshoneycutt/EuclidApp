@@ -153,7 +153,8 @@ view_snapshot_record_transfer_accepts_exact_limits :: proc(t: ^testing.T) {
     nodes[len(nodes) - 1].style_id = 42
 
     testing.expect(t, build_view_snapshot_record_payloads(
-        slot, {commands, programs, math_commands, nodes, nil}))
+        slot, {commands = commands, math_programs = programs,
+            math_commands = math_commands, math_nodes = nodes}))
     view_snapshot_expect_record_limits(t, slot, {
         commands, programs, math_commands, nodes})
 }
@@ -166,8 +167,8 @@ view_snapshot_record_overflow_rejected :: proc(
     slot^.state = .Free
     testing.expect(t, prepare_view_snapshot_slot(slot))
     testing.expect(t, !build_view_snapshot_record_payloads(
-        slot, {payloads.commands, payloads.programs,
-            payloads.math_commands, payloads.nodes, nil}))
+        slot, {commands = payloads.commands, math_programs = payloads.programs,
+            math_commands = payloads.math_commands, math_nodes = payloads.nodes}))
     testing.expect(t, !slot^.command_builder.sealed &&
         !slot^.math_program_builder.sealed && !slot^.math_command_builder.sealed &&
         !slot^.math_node_builder.sealed)
@@ -200,6 +201,116 @@ view_snapshot_record_transfer_rejects_each_overflow :: proc(t: ^testing.T) {
     view_snapshot_record_overflow_rejected(t, slot, {nodes = nodes})
 }
 
+//   Verify semantic document bytes and records reject one element beyond each limit.
+@(test)
+view_snapshot_document_transfer_rejects_overflow :: proc(t: ^testing.T) {
+    service := view_snapshot_arena_test_service(t)
+    defer view_snapshot_arena_test_service_destroy(service)
+    slot := &service^.view_snapshots[0]
+    document_text := make([]u8, core.DYNVIEW_MAX_DOCUMENT_BYTES + 1)
+    documents := make([]core.Dynview_Document, core.DYNVIEW_MAX_DOCUMENTS + 1)
+    blocks := make([]core.Dynview_Document_Block,
+        core.DYNVIEW_MAX_DOCUMENT_BLOCKS + 1)
+    items := make([]core.Dynview_Document_Inline,
+        core.DYNVIEW_MAX_DOCUMENT_INLINES + 1)
+    rows := make([]core.Dynview_Document_Display_Row,
+        core.DYNVIEW_MAX_DOCUMENT_DISPLAY_ROWS + 1)
+    defer delete(document_text)
+    defer delete(documents)
+    defer delete(blocks)
+    defer delete(items)
+    defer delete(rows)
+
+    testing.expect(t, prepare_view_snapshot_slot(slot))
+    testing.expect(t, !build_view_snapshot_record_payloads(
+        slot, {document_text = document_text}))
+    slot^.state = .Free
+    testing.expect(t, prepare_view_snapshot_slot(slot))
+    testing.expect(t, !build_view_snapshot_record_payloads(
+        slot, {documents = documents}))
+    slot^.state = .Free
+    testing.expect(t, prepare_view_snapshot_slot(slot))
+    testing.expect(t, !build_view_snapshot_record_payloads(
+        slot, {document_blocks = blocks}))
+    slot^.state = .Free
+    testing.expect(t, prepare_view_snapshot_slot(slot))
+    testing.expect(t, !build_view_snapshot_record_payloads(
+        slot, {document_inlines = items}))
+    slot^.state = .Free
+    testing.expect(t, prepare_view_snapshot_slot(slot))
+    testing.expect(t, !build_view_snapshot_record_payloads(
+        slot, {document_display_rows = rows}))
+}
+
+// Verify display row ownership and math references cannot escape sealed records.
+@(test)
+view_snapshot_document_validation_rejects_malformed_display_rows :: proc(
+    t: ^testing.T) {
+
+    service := view_snapshot_arena_test_service(t)
+    defer view_snapshot_arena_test_service_destroy(service)
+    slot := &service^.view_snapshots[0]
+    testing.expect(t, prepare_view_snapshot_slot(slot))
+    testing.expect(t, build_view_snapshot_text_payloads(slot, "fallback", nil))
+    programs := []core.Dynview_Math_Program{{
+        valid = true, root_node_index = 0, node_count = 1}}
+    nodes := []core.Dynview_Math_Node{{kind = .Glyph_Run}}
+    documents := []core.Dynview_Document{{source_count = 1, block_count = 1,
+        display_row_count = 1}}
+    blocks := []core.Dynview_Document_Block{{kind = .Display, source_count = 1,
+        display_kind = .Equation, display_row_count = 1}}
+    rows := []core.Dynview_Document_Display_Row{{source_count = 1,
+        primary_program_id = 0, secondary_program_id = -1,
+        alignment = .Center, number = 1}}
+    testing.expect(t, build_view_snapshot_record_payloads(slot, {
+        math_programs = programs, math_nodes = nodes, document_text = {'x'},
+        documents = documents, document_blocks = blocks,
+        document_display_rows = rows,
+    }))
+    testing.expect(t, view_snapshot_is_valid(slot))
+
+    slot^.document_blocks[0].display_row_count = 2
+    testing.expect(t, !view_snapshot_is_valid(slot))
+    slot^.document_blocks[0].display_row_count = 1
+    slot^.document_display_rows[0].primary_program_id = 1
+    testing.expect(t, !view_snapshot_is_valid(slot))
+}
+
+//   Verify malformed semantic ownership ranges fail before publication.
+@(test)
+view_snapshot_document_validation_rejects_malformed_ranges :: proc(t: ^testing.T) {
+    service := view_snapshot_arena_test_service(t)
+    defer view_snapshot_arena_test_service_destroy(service)
+    slot := &service^.view_snapshots[0]
+    testing.expect(t, prepare_view_snapshot_slot(slot))
+    testing.expect(t, build_view_snapshot_text_payloads(slot, "fallback", nil))
+    document_text: string = "sourceplain"
+    documents := []core.Dynview_Document{{
+        source_count = 6, text_offset = 6, text_count = 5,
+        block_count = 1, inline_count = 1}}
+    blocks := []core.Dynview_Document_Block{{
+        kind = .Paragraph, inline_count = 1, source_count = 6}}
+    items := []core.Dynview_Document_Inline{{
+        kind = .Text, source_count = 6, text_offset = 6, text_count = 5,
+        math_program_id = -1}}
+    testing.expect(t, build_view_snapshot_record_payloads(slot, {
+        document_text = transmute([]u8)document_text,
+        documents = documents,
+        document_blocks = blocks,
+        document_inlines = items,
+    }))
+    testing.expect(t, view_snapshot_is_valid(slot))
+
+    slot^.document_blocks[0].inline_count = 2
+    testing.expect(t, !view_snapshot_is_valid(slot))
+    slot^.document_blocks[0].inline_count = 1
+    slot^.document_inlines[0].text_offset = 5
+    testing.expect(t, !view_snapshot_is_valid(slot))
+    slot^.document_inlines[0].text_offset = 6
+    slot^.documents[0].source_count = 12
+    testing.expect(t, !view_snapshot_is_valid(slot))
+}
+
 //   Verify record validation rejects same-length slices outside sealed storage.
 @(test)
 view_snapshot_record_validation_rejects_forged_aliases :: proc(t: ^testing.T) {
@@ -214,7 +325,8 @@ view_snapshot_record_validation_rejects_forged_aliases :: proc(t: ^testing.T) {
     math_commands := []core.Dynview_Command{{math_atom_class = .Ord}}
     nodes := []core.Dynview_Math_Node{{kind = .Glyph_Run}}
     testing.expect(t, build_view_snapshot_record_payloads(
-        slot, {commands, programs, math_commands, nodes, nil}))
+        slot, {commands = commands, math_programs = programs,
+            math_commands = math_commands, math_nodes = nodes}))
     testing.expect(t, view_snapshot_is_valid(slot))
     forged_commands := [1]core.Dynview_Command{commands[0]}
     forged_programs := [1]core.Dynview_Math_Program{programs[0]}
@@ -280,8 +392,9 @@ view_snapshot_math_record_validation_rejects_malformed_structure :: proc(
         {kind = .Glyph_Run, text_len = 4},
     }
     testing.expect(t, build_view_snapshot_record_payloads(
-        slot, {nil, programs,
-            []core.Dynview_Command{{math_atom_class = .Ord}}, nodes, nil}))
+        slot, {math_programs = programs,
+            math_commands = []core.Dynview_Command{{math_atom_class = .Ord}},
+            math_nodes = nodes}))
     testing.expect(t, view_snapshot_is_valid(slot))
     view_snapshot_expect_malformed_math_rejected(t, slot)
 }

@@ -67,6 +67,54 @@ document_store_deduplicates_and_resolves :: proc(t: ^testing.T) {
         uintptr(align_of(dynparse.Tex_Math_Program)), uintptr(0))
 }
 
+//   Verify semantic document blocks resolve from immutable aligned storage.
+@(test)
+document_store_resolves_semantic_document_blocks :: proc(t: ^testing.T) {
+    memory: app_core.Animation_Memory
+    store: app_core.Dynview_Document_Store
+    testing.expect(t, document_store_test_init(&memory, &store, 21))
+    defer document_store_test_destroy(&memory, &store)
+    source := "first $x$\n\nsecond\n\\[y\\]\nthird"
+
+    handle, status := document_store_intern(
+        &store, source, .Document, .Display)
+    testing.expect_value(t, status, Dynview_Document_Status.Ok)
+    document, resolve_status := document_store_resolve(&store, handle)
+    testing.expect_value(t, resolve_status, Dynview_Document_Status.Ok)
+    testing.expect_value(t, len(document.document_blocks), 4)
+    testing.expect_value(t, document.document_blocks[2].kind,
+        dynparse.Tex_Document_Block_Kind.Display)
+    display := document.document_blocks[2]
+    testing.expect_value(t, document.document_inlines[
+        display.inline_start].kind, dynparse.Tex_Document_Inline_Kind.Math)
+    testing.expect_value(t, uintptr(raw_data(document.document_blocks)) %
+        uintptr(align_of(dynparse.Tex_Document_Block)), uintptr(0))
+    testing.expect_value(t, uintptr(raw_data(document.document_inlines)) %
+        uintptr(align_of(dynparse.Tex_Document_Inline)), uintptr(0))
+}
+
+// Verify technical display rows resolve from aligned generation-owned storage.
+@(test)
+document_store_resolves_technical_display_rows :: proc(t: ^testing.T) {
+    memory: app_core.Animation_Memory
+    store: app_core.Dynview_Document_Store
+    testing.expect(t, document_store_test_init(&memory, &store, 22))
+    defer document_store_test_destroy(&memory, &store)
+    source := "\\begin{align}a&=b\\\\c&=d\\notag\\end{align}"
+
+    handle, status := document_store_intern(
+        &store, source, .Document, .Display)
+    testing.expect_value(t, status, Dynview_Document_Status.Ok)
+    document, resolve_status := document_store_resolve(&store, handle)
+
+    testing.expect_value(t, resolve_status, Dynview_Document_Status.Ok)
+    testing.expect_value(t, len(document.document_display_rows), 2)
+    testing.expect(t, document.document_display_rows[0].secondary_program >= 0)
+    testing.expect(t, document.document_display_rows[1].suppress_number)
+    testing.expect_value(t, uintptr(raw_data(document.document_display_rows)) %
+        uintptr(align_of(dynparse.Tex_Document_Display_Row)), uintptr(0))
+}
+
 //   Verify equal hashes continue probing and compare exact retained source bytes.
 @(test)
 document_store_resolves_forced_hash_collisions :: proc(t: ^testing.T) {

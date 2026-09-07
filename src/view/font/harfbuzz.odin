@@ -473,6 +473,26 @@ harfbuzz_nominal_glyph :: proc(
     return glyph_id, found != 0 && glyph_id != 0
 }
 
+// Query one initialized face glyph's ink extents in configured 26.6 pixel units.
+harfbuzz_glyph_extents :: proc(
+    shaper: ^Font_Shaping_Resource,
+    glyph_id: u32) -> (Font_Glyph_Extents, bool) {
+
+    if shaper == nil || shaper.face == nil || shaper.font == nil || glyph_id == 0 ||
+        glyph_id >= hb_face_get_glyph_count(cast(^Harfbuzz_Face)shaper.face) {
+        return {}, false
+    }
+    native: Harfbuzz_Glyph_Extents
+    found := hb_font_get_glyph_extents(
+        cast(^Harfbuzz_Font)shaper.font, glyph_id, &native)
+    return {
+        x_bearing = native.x_bearing,
+        y_bearing = native.y_bearing,
+        width = native.width,
+        height = native.height,
+    }, found != 0
+}
+
 //   Report whether one capability is ready for an exact resident generation.
 math_shaping_generation_matches :: proc(
     capability: ^Font_Math_Shaping_Capability,
@@ -514,15 +534,7 @@ math_shaping_glyph_extents :: proc(
         !math_shaping_has_glyph(capability, glyph_id) {
         return {}, false
     }
-    native: Harfbuzz_Glyph_Extents
-    found := hb_font_get_glyph_extents(
-        cast(^Harfbuzz_Font)capability.resource.font, glyph_id, &native)
-    return {
-        x_bearing = native.x_bearing,
-        y_bearing = native.y_bearing,
-        width = native.width,
-        height = native.height,
-    }, found != 0
+    return harfbuzz_glyph_extents(&capability.resource, glyph_id)
 }
 
 //   Query one math glyph's italic correction in configured 26.6 pixel units.

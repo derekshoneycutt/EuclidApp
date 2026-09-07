@@ -180,7 +180,7 @@ const ScenarioRunner = Main.EuclidScenarioRunner
         locations = TestRunner.discover_odin_locations(TestRunner.ODIN_SOURCE_ROOT)
         name = "core.core_test_animation_value_store_overwrites_bound_key"
         @test locations[name].file == "src/core/animation_value_store_test.odin"
-        @test locations[name].line == 8
+        @test locations[name].line == 27
         package_names = TestRunner.odin_package_test_names(source_path, locations)
         @test name in package_names
         @test all(startswith(test_name, "core.") for test_name in package_names)

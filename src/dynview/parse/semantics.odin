@@ -4,7 +4,9 @@ TEX_MATH_OP_CAPACITY :: 4096
 TEX_MATH_PROGRAM_CAPACITY :: 256
 TEX_SEMANTIC_TEXT_BYTE_CAPACITY :: 64 * 1024
 TEX_TABLE_DESCRIPTOR_CAPACITY :: 256
-TEX_DOCUMENT_RUN_CAPACITY :: 512
+TEX_DOCUMENT_BLOCK_CAPACITY :: 256
+TEX_DOCUMENT_INLINE_CAPACITY :: 2048
+TEX_DOCUMENT_DISPLAY_ROW_CAPACITY :: 512
 
 // Match the frozen recursive operation numbers emitted by the Julia compiler.
 Tex_Math_Op_Kind :: enum i32 {
@@ -169,15 +171,6 @@ Tex_Table_Descriptor :: struct {
     horizontal_rule_counts: [17]u8,
 }
 
-// Match the flat document run kinds emitted by the legacy parser.
-Tex_Document_Run_Kind :: enum {
-    Text,
-    Math_Inline,
-    Math_Display,
-    Shape,
-    Line_Break,
-}
-
 // Retain one optional color without depending on rendering packages.
 Tex_Document_Color :: struct {
     present: bool,
@@ -217,15 +210,91 @@ Tex_Document_Shape :: struct {
     edge_colors: [5]Tex_Document_Color,
 }
 
-// Retain one flat document command and its optional recursive math program.
-Tex_Document_Run :: struct {
-    kind: Tex_Document_Run_Kind,
+// Identify one font-independent document block.
+Tex_Document_Block_Kind :: enum {
+    Paragraph,
+    Display,
+}
+
+// Identify the document-level policy for one technical display environment.
+Tex_Document_Display_Kind :: enum {
+    Plain,
+    Equation,
+    Align,
+    Gather,
+    Multline,
+}
+
+// Identify one semantic item inside a document block.
+Tex_Document_Inline_Kind :: enum {
+    Text,
+    Space,
+    Math,
+    Shape,
+    Penalty,
+    Forced_Break,
+}
+
+// Distinguish spacing behavior before physical measurement.
+Tex_Document_Space_Kind :: enum {
+    Breakable,
+    Nonbreaking,
+    Controlled,
+}
+
+// Identify block alignment independently from physical placement.
+Tex_Document_Alignment :: enum {
+    Left,
+    Center,
+    Right,
+}
+
+// Retain paragraph and display policy before layout.
+Tex_Document_Format :: struct {
+    alignment: Tex_Document_Alignment,
+    no_indent: bool,
+}
+
+// Retain one bounded technical-display row and its existing math programs.
+Tex_Document_Display_Row :: struct {
+    source: Tex_Source_Span,
+    primary_program: int,
+    secondary_program: int,
+    alignment: Tex_Document_Alignment,
+    suppress_number: bool,
+}
+
+// Reference exact bytes in the caller's source document.
+Tex_Source_Span :: struct {
+    offset: int,
+    length: int,
+}
+
+// Retain one pointer-free semantic inline item.
+Tex_Document_Inline :: struct {
+    kind: Tex_Document_Inline_Kind,
+    source: Tex_Source_Span,
     text: Tex_Text_Span,
     font_flags: i32,
     color: Tex_Document_Color,
+    space_kind: Tex_Document_Space_Kind,
     shape: Tex_Document_Shape,
     root_style: Tex_Math_Root_Style,
     math_program: int,
+    penalty: i32,
+}
+
+// Retain one contiguous range of semantic inline items.
+Tex_Document_Block :: struct {
+    kind: Tex_Document_Block_Kind,
+    inline_start: int,
+    inline_count: int,
+    source: Tex_Source_Span,
+    format: Tex_Document_Format,
+    display_kind: Tex_Document_Display_Kind,
+    display_row_start: int,
+    display_row_count: int,
+    display_numbered: bool,
 }
 
 // Describe one recursive program as a linked sequence of semantic operations.
@@ -270,8 +339,13 @@ Tex_Semantic_Output :: struct {
     program_count: int,
     table_descriptors: [TEX_TABLE_DESCRIPTOR_CAPACITY]Tex_Table_Descriptor,
     table_descriptor_count: int,
-    document_runs: [TEX_DOCUMENT_RUN_CAPACITY]Tex_Document_Run,
-    document_run_count: int,
+    document_blocks: [TEX_DOCUMENT_BLOCK_CAPACITY]Tex_Document_Block,
+    document_block_count: int,
+    document_inlines: [TEX_DOCUMENT_INLINE_CAPACITY]Tex_Document_Inline,
+    document_inline_count: int,
+    document_display_rows:
+        [TEX_DOCUMENT_DISPLAY_ROW_CAPACITY]Tex_Document_Display_Row,
+    document_display_row_count: int,
     root_program: int,
     plain_text: Tex_Text_Span,
     status: Tex_Parse_Status,

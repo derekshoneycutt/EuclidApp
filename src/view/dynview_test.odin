@@ -67,6 +67,22 @@ view_snapshot_test_record_builders_init :: proc(
     testing.expect_value(t, app_core.bounded_element_builder_init(
         &snapshot^.math_node_builder, app_core.DYNVIEW_MAX_MATH_NODES,
         &snapshot^.arena), app_core.Bounded_Builder_Status.Ok)
+    testing.expect_value(t, app_core.bounded_byte_builder_init(
+        &snapshot^.document_text_builder, app_core.DYNVIEW_MAX_DOCUMENT_BYTES,
+        &snapshot^.arena), app_core.Bounded_Builder_Status.Ok)
+    testing.expect_value(t, app_core.bounded_element_builder_init(
+        &snapshot^.document_builder, app_core.DYNVIEW_MAX_DOCUMENTS,
+        &snapshot^.arena), app_core.Bounded_Builder_Status.Ok)
+    testing.expect_value(t, app_core.bounded_element_builder_init(
+        &snapshot^.document_block_builder, app_core.DYNVIEW_MAX_DOCUMENT_BLOCKS,
+        &snapshot^.arena), app_core.Bounded_Builder_Status.Ok)
+    testing.expect_value(t, app_core.bounded_element_builder_init(
+        &snapshot^.document_inline_builder, app_core.DYNVIEW_MAX_DOCUMENT_INLINES,
+        &snapshot^.arena), app_core.Bounded_Builder_Status.Ok)
+    testing.expect_value(t, app_core.bounded_element_builder_init(
+        &snapshot^.document_display_row_builder,
+        app_core.DYNVIEW_MAX_DOCUMENT_DISPLAY_ROWS,
+        &snapshot^.arena), app_core.Bounded_Builder_Status.Ok)
 }
 
 //   Initialize and seal both slot-owned text builders for direct snapshot tests.
@@ -74,7 +90,8 @@ view_snapshot_test_text_builders_init :: proc(
     t: ^testing.T, snapshot: ^app_bridge.View_Snapshot,
     fallback_text, command_text: string) {
 
-    testing.expect(t, app_core.arena_owner_init(&snapshot^.arena))
+    testing.expect(t, app_core.arena_owner_init(
+        &snapshot^.arena, app_core.VIEW_SNAPSHOT_ARENA_RESERVATION))
     testing.expect_value(t, app_core.bounded_byte_builder_init(
         &snapshot^.fallback_text_builder, app_core.VIEW_SNAPSHOT_TEXT_CAPACITY,
         &snapshot^.arena), app_core.Bounded_Builder_Status.Ok)
@@ -205,6 +222,33 @@ dynview_track_font_retains_canonical_cell_metrics :: proc(t: ^testing.T) {
     app_dynview.track_font(runtime, 16, 8, 23)
     testing.expect(t,
         runtime^.pending_invalidation_mask & app_dynview.DYNVIEW_INVALIDATE_FONT != 0)
+}
+
+// Verify an effective variant publication invalidates even at the same generation number.
+@(test)
+dynview_track_prose_fonts_includes_effective_variant :: proc(t: ^testing.T) {
+    arena: app_core.Arena_Owner
+    testing.expect(t, app_core.arena_owner_init(&arena))
+    defer app_core.arena_owner_destroy(&arena)
+    allocator := app_core.arena_owner_allocator(&arena)
+    runtime := new(app_core.Dynview_System, allocator)
+    count := int(app_core.Font_Key.Math_Regular)
+    keys: [int(app_core.Font_Key.Math_Regular)]app_core.Font_Key
+    generations: [int(app_core.Font_Key.Math_Regular)]u64
+    for index in 0..<count {
+        keys[index] = .Regular
+        generations[index] = 1
+    }
+    app_dynview.track_prose_fonts(runtime, keys[:], generations[:])
+    runtime^.pending_invalidation_mask = 0
+    runtime^.compile_cache.is_valid = true
+
+    keys[int(app_core.Font_Key.Bold)] = .Bold
+    app_dynview.track_prose_fonts(runtime, keys[:], generations[:])
+
+    testing.expect(t,
+        runtime^.pending_invalidation_mask & app_dynview.DYNVIEW_INVALIDATE_FONT != 0)
+    testing.expect(t, !runtime^.compile_cache.is_valid)
 }
 
 //   Verify the scratchpad history prompt style matches the live input indent.
@@ -685,7 +729,8 @@ view_snapshot_copy_preserves_recursive_math_spans :: proc(t: ^testing.T) {
     math_commands := []app_core.Dynview_Command{{kind = .Math_Glyph_Run}}
     nodes := []app_core.Dynview_Math_Node{{kind = .Glyph_Run}}
     testing.expect(t, app_bridge.build_view_snapshot_record_payloads(
-        snapshot, {commands, programs, math_commands, nodes, nil}))
+        snapshot, {commands = commands, math_programs = programs,
+            math_commands = math_commands, math_nodes = nodes}))
     runtime^.compile_cache.is_valid = true
     runtime^.compile_cache.layout_is_valid = true
 
@@ -785,6 +830,43 @@ scratchpad_completion_waits_for_valid_view_publication :: proc(t: ^testing.T) {
 
     testing.expect(t, !app_bridge.publish_available_view_snapshot(state))
     testing.expect_value(t, state^.evidence_ring.count, 0)
+}
+
+//   Verify malformed Scratchpad semantics retain the prior published fallback atomically.
+@(test)
+scratchpad_semantic_rollback_preserves_published_fallback :: proc(t: ^testing.T) {
+    fixture := View_Snapshot_Publication_Fixture{
+        new(app_core.Euclid_General_State),
+        new(app_bridge.Julia_Runtime_Service),
+        new(app_core.Euclid_Julia_Animation_Interface)}
+    defer free(fixture.animation)
+    defer free(fixture.service)
+    defer free(fixture.state)
+    view_snapshot_publication_fixture_init(&fixture)
+    fixture.service^.runtime_generation = 3
+    fixture.service^.animation_generation = 7
+    first := &fixture.service^.view_snapshots[0]
+    view_snapshot_test_complete(first, fixture.animation, 1, 3, 7)
+    view_snapshot_test_payloads_init(t, first, "published fallback", 1)
+    defer app_core.arena_owner_destroy(&first^.arena)
+    testing.expect(t, app_bridge.publish_available_view_snapshot(fixture.state))
+
+    candidate := &fixture.service^.view_snapshots[1]
+    view_snapshot_test_complete(candidate, fixture.animation, 2, 3, 7)
+    view_snapshot_test_text_builders_init(t, candidate, "candidate fallback", "")
+    defer app_core.arena_owner_destroy(&candidate^.arena)
+    testing.expect(t, app_bridge.build_view_snapshot_record_payloads(candidate, {
+        document_text = []u8{'x'},
+        documents = []app_core.Dynview_Document{{source_count = 2}},
+    }))
+
+    testing.expect(t, !app_bridge.publish_available_view_snapshot(fixture.state))
+    testing.expect_value(t,
+        app_bridge.current_view_snapshot_text(fixture.state), "published fallback")
+    testing.expect_value(t, first^.state,
+        app_bridge.View_Snapshot_Slot_State.Published)
+    testing.expect_value(t, candidate^.state,
+        app_bridge.View_Snapshot_Slot_State.Free)
 }
 
 //   Verify stale runtime identity and evidence pressure cannot produce false proof.
@@ -1271,6 +1353,31 @@ dynview_scratchpad_scroll_metrics_use_grid_rows :: proc(t: ^testing.T) {
 
     testing.expect_value(t, content_height, f32(74))
     testing.expect_value(t, scroll_step, f32(44))
+}
+
+// Verify semantic documents use their exact authoritative extent for scrolling.
+@(test)
+dynview_document_scroll_metrics_override_legacy_rows :: proc(t: ^testing.T) {
+    runtime := new(app_core.Dynview_System, context.allocator)
+    defer free(runtime)
+    documents := [1]app_core.Dynview_Document{{block_count = 1}}
+    lines := [2]app_core.Dynview_Document_Layout_Line{{}, {}}
+    runtime^.enabled = true
+    runtime^.content.documents = documents[:]
+    runtime^.compile_cache.document_layout_is_valid = true
+    runtime^.compile_cache.document_layout_lines = lines[:]
+    runtime^.compile_cache.document_layout_total_height = 75
+    runtime^.compile_cache.layout_is_valid = true
+    runtime^.compile_cache.layout_total_height = 22
+    fallback := app_dynlayout.Scratchpad_Fallback_Layout{
+        text_padding = 4, wrap_advance = 8, row_height = 22, text = "fallback"}
+
+    content_height := app_dynlayout.scratchpad_content_height_or_fallback(
+        runtime, {width = 80, height = 100}, fallback)
+    scroll_step := app_dynlayout.scratchpad_scroll_step_or_fallback(runtime, 22)
+
+    testing.expect_value(t, content_height, f32(83))
+    testing.expect_value(t, scroll_step, f32(37.5))
 }
 
 //   Build canonical row spans and copy-hit geometry for one block fixture.

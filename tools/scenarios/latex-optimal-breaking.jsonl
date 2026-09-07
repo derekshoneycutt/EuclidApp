@@ -1,0 +1,14 @@
+{"wait_state":"runtime_ready","timeout_ms":10000}
+{"select_animation":"Scratchpad","as":"scratchpad"}
+{"wait_event":"animation_selected","correlation":"scratchpad","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"scratchpad","timeout_ms":10000}
+{"scratchpad":":clear","as":"clear"}
+{"wait_event":"scratchpad_completed","correlation":"clear","timeout_ms":10000}
+{"scratchpad":"L\"\\textbf{Line quality}\\newline A measured paragraph chooses balanced lines from several legal spaces while preserving a quiet final line. Bounded search compares paths, respects penalties, and keeps every rendered word stable across layout.\"","as":"document"}
+{"wait_event":"scratchpad_completed","correlation":"document","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
+{"screenshot":".build/phase7-optimal-breaking.png"}
+{"wait_event":"capture_completed","timeout_ms":10000}
+{"assert_state":"dynview_enabled"}
+{"assert_no_bad_frees":true}
+{"shutdown":true}

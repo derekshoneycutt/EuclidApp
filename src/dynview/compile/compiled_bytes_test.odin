@@ -14,6 +14,35 @@ compiled_bytes_test_arena_init :: proc(
     testing.expect(t, app_core.arena_owner_init(arena, 256*uint(mem.Kilobyte)))
 }
 
+// Verify semantic compilation skips command layout while standalone streams retain it.
+@(test)
+semantic_documents_publish_without_command_layout :: proc(t: ^testing.T) {
+    runtime_arena, cache_arena: app_core.Arena_Owner
+    compiled_bytes_test_arena_init(t, &runtime_arena)
+    defer app_core.arena_owner_destroy(&runtime_arena)
+    compiled_bytes_test_arena_init(t, &cache_arena)
+    defer app_core.arena_owner_destroy(&cache_arena)
+    allocator := app_core.arena_owner_allocator(&runtime_arena)
+    runtime := new(app_core.Dynview_System, allocator)
+    documents := [1]app_core.Dynview_Document{{}}
+    runtime^.content.documents = documents[:]
+
+    semantic_status := compile_derived_views(runtime, &cache_arena, {}, {})
+
+    testing.expect_value(t, semantic_status, dyncore.DYNVIEW_STATUS_OK)
+    testing.expect(t, runtime^.compile_cache.document_layout_is_valid)
+    testing.expect(t, !runtime^.compile_cache.layout_is_valid)
+    testing.expect_value(t, len(runtime^.compile_cache.layout_lines), 0)
+    testing.expect_value(t, len(runtime^.compile_cache.layout_items), 0)
+
+    runtime^.content.documents = nil
+    app_core.arena_owner_reset(&cache_arena)
+    standalone_status := compile_derived_views(runtime, &cache_arena, {}, {})
+
+    testing.expect_value(t, standalone_status, dyncore.DYNVIEW_STATUS_OK)
+    testing.expect(t, runtime^.compile_cache.layout_is_valid)
+}
+
 //   Verify successful compilation seals plain and copy bytes into arena aliases.
 @(test)
 compiled_bytes_publish_sealed_plain_and_copy_payloads :: proc(t: ^testing.T) {
@@ -214,6 +243,44 @@ copy_hit_targets_reuse_capacity_across_frames :: proc(t: ^testing.T) {
     testing.expect_value(t, cache^.copy_hit_targets[0].block_id, i32(3))
     testing.expect_value(t, raw_data(cache^.copy_hit_target_builder.storage), storage)
     testing.expect_value(t, cache^.copy_hit_target_builder.allocated_capacity, capacity)
+}
+
+//   Verify semantic documents derive copy geometry from sealed block bounds.
+@(test)
+document_copy_hit_target_uses_semantic_layout :: proc(t: ^testing.T) {
+    arena: app_core.Arena_Owner
+    compiled_bytes_test_arena_init(t, &arena)
+    defer app_core.arena_owner_destroy(&arena)
+    allocator := app_core.arena_owner_allocator(&arena)
+    runtime := new(app_core.Dynview_System, allocator)
+    cache := &runtime^.compile_cache
+    testing.expect_value(t, app_core.bounded_element_builder_init(
+        &cache^.copy_hit_target_builder, app_core.DYNVIEW_MAX_COMMANDS, &arena),
+        app_core.Bounded_Builder_Status.Ok)
+    documents := [1]app_core.Dynview_Document{{}}
+    runtime^.content.documents = documents[:]
+    cache^.is_valid = true
+    cache^.document_layout_is_valid = true
+    cache^.copy_blocks = []app_core.Dynview_Copy_Block{{
+        block_id = 7, payload_offset = 3, payload_len = 9}}
+    cache^.copy_block_count = 1
+    cache^.document_layout_blocks = []app_core.Dynview_Document_Layout_Block{
+        {reserved_top = 2, reserved_bottom = 24},
+        {reserved_top = 30, reserved_bottom = 58},
+    }
+
+    status := rebuild_copy_hit_targets(runtime, {
+        panel = {x = 5, y = 10, width = 120, height = 100},
+        scroll_y = 4, text_padding = 6, icon_size = 12})
+
+    testing.expect_value(t, status, dyncore.DYNVIEW_STATUS_OK)
+    testing.expect_value(t, len(cache^.copy_hit_targets), 1)
+    target := cache^.copy_hit_targets[0]
+    testing.expect_value(t, target.block_id, i32(7))
+    testing.expect_value(t, target.payload_offset, 3)
+    testing.expect_value(t, target.payload_len, 9)
+    testing.expect_value(t, target.hover_rect.y, f32(14))
+    testing.expect_value(t, target.hover_rect.height, f32(56))
 }
 
 //   Verify hit-target admission rejects one visible record beyond its hard limit.

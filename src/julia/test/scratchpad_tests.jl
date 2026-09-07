@@ -26,6 +26,9 @@ const TEST_SCRATCHPAD_STATE_PTR = Ptr{Cvoid}(0)
 struct ScratchpadLatexResultMock
 end
 
+struct ScratchpadDocumentResultMock
+end
+
 struct ScratchpadPlainResultMock
 end
 
@@ -45,6 +48,10 @@ Base.show(io::IO, ::MIME"text/plain", m::ScratchpadLatexResultMock) =
     print(io, "ScratchpadLatexResultMock()")
 Base.show(io::IO, ::MIME"text/latex", m::ScratchpadLatexResultMock) =
     print(io, "\\frac{1}{2}")
+Base.show(io::IO, ::MIME"text/plain", m::ScratchpadDocumentResultMock) =
+    print(io, "Definition\n\nA point has no part.")
+Base.show(io::IO, ::MIME"text/latex", m::ScratchpadDocumentResultMock) =
+    print(io, "\\textbf{Definition}\n\nA point has no part.")
 
 Base.show(io::IO, ::MIME"text/plain", m::ScratchpadPlainResultMock) =
     print(io, "ScratchpadPlainResultMock()")
@@ -410,6 +417,9 @@ end
     runtime = Scratchpad.create_runtime_module(TEST_SCRATCHPAD_RUNTIME, 4_001)
     malformed_latex = Main.LaTeXStrings.LaTeXString("\$\$\\alpha\$")
     @test Scratchpad.format_result_latex_source(malformed_latex, runtime) == "\\alpha"
+    formatted_math = Scratchpad.format_result_latex(malformed_latex, runtime)
+    @test formatted_math !== nothing
+    @test formatted_math.is_math
 
     plain_source = Scratchpad.format_result_latex_source(
         ScratchpadPlainResultMock(), Main)
@@ -424,12 +434,29 @@ end
     @test session.output[1] == "ScratchpadLatexResultMock()"
     @test length(session.output_entries) == 1
     @test session.output_entries[1].latex_source == "\\frac{1}{2}"
+    @test !session.output_entries[1].latex_is_math
+    @test Scratchpad.latest_latex_output(session) !== nothing
+
+    runtime = Scratchpad.create_runtime_module(TEST_SCRATCHPAD_RUNTIME, 4_002)
+    matrix_result = Core.eval(runtime,
+        :(L"\\text{x} \\begin{matrix}1&2\\\\3&4\\end{matrix}"))
+    Scratchpad.append_eval_result_output!(session, matrix_result)
+    @test session.output_entries[2].latex_is_math
+
+    document_session = new_session()
+    Scratchpad.append_eval_result_output!(
+        document_session, ScratchpadDocumentResultMock())
+    document_entry = Scratchpad.latest_latex_output(document_session)
+    @test document_entry !== nothing
+    @test document_entry.line == "Definition\n\nA point has no part."
+    @test document_entry.latex_source ==
+        "\\textbf{Definition}\n\nA point has no part."
 
     Scratchpad.append_eval_result_output!(session, ScratchpadPlainResultMock())
-    @test length(session.output) == 2
-    @test session.output[2] == "ScratchpadPlainResultMock()"
-    @test length(session.output_entries) == 2
-    @test session.output_entries[2].latex_source == ""
+    @test length(session.output) == 3
+    @test session.output[3] == "ScratchpadPlainResultMock()"
+    @test length(session.output_entries) == 3
+    @test session.output_entries[3].latex_source == ""
 end
 
 @testset "history navigation" begin

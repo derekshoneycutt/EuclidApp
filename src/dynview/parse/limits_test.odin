@@ -2,8 +2,6 @@ package dynview_parse
 
 import "core:testing"
 
-TEX_TEST_BREAK_PATTERN_BYTES :: 10
-
 //   Verify recursive math depth admits the configured maximum and rejects one more.
 @(test)
 tex_parse_math_enforces_exact_depth_limit :: proc(t: ^testing.T) {
@@ -34,25 +32,61 @@ tex_parse_math_enforces_exact_node_capacity :: proc(t: ^testing.T) {
         string(bytes[:]), .Display, output), Tex_Parse_Status.Work_Limit)
 }
 
-//   Verify document parsing admits exactly 512 alternating text and break runs.
+//   Verify semantic block storage admits its exact capacity and no more.
 @(test)
-tex_parse_document_enforces_exact_run_capacity :: proc(t: ^testing.T) {
-    pattern := "x\\newline "
-    bytes: [256 * TEX_TEST_BREAK_PATTERN_BYTES + 1]u8
-    for index in 0..<256 {
-        start := index * TEX_TEST_BREAK_PATTERN_BYTES
-        copy(bytes[start:start+TEX_TEST_BREAK_PATTERN_BYTES],
-            transmute([]u8)pattern)
+tex_semantic_builder_enforces_exact_document_block_capacity :: proc(t: ^testing.T) {
+    output := tex_math_test_output()
+    defer free(output)
+    testing.expect(t, tex_semantic_output_init(output))
+    for index in 0..<TEX_DOCUMENT_BLOCK_CAPACITY {
+        testing.expect(t, tex_semantic_append_document_block(output, {
+            kind = .Paragraph,
+            inline_start = output.document_inline_count,
+            source = {index, 1},
+        }) >= 0)
     }
+    testing.expect_value(t, output.document_block_count,
+        TEX_DOCUMENT_BLOCK_CAPACITY)
+    testing.expect_value(t, tex_semantic_append_document_block(output, {}), -1)
+    testing.expect_value(t, output.status, Tex_Parse_Status.Work_Limit)
+}
+
+//   Verify inline overflow rejects the complete semantic document.
+@(test)
+tex_parse_document_enforces_exact_inline_capacity :: proc(t: ^testing.T) {
+    bytes: [TEX_DOCUMENT_INLINE_CAPACITY + 1]u8
+    for index in 0..<len(bytes) {
+        bytes[index] = 'x' if index%2 == 0 else ' '
+    }
+    bytes[TEX_DOCUMENT_INLINE_CAPACITY-1] = '~'
     output := tex_math_test_output()
     defer free(output)
     testing.expect_value(t, tex_parse_document(
-        string(bytes[:len(bytes)-1]), output), Tex_Parse_Status.Ok)
-    testing.expect_value(t, output.document_run_count, TEX_DOCUMENT_RUN_CAPACITY)
-    bytes[len(bytes)-1] = 'x'
-    testing.expect_value(t, tex_parse_document(
-        string(bytes[:]), output), Tex_Parse_Status.Work_Limit)
-    testing.expect_value(t, output.document_run_count, 0)
+        string(bytes[:TEX_DOCUMENT_INLINE_CAPACITY]), output),
+        Tex_Parse_Status.Ok)
+    testing.expect_value(t, output.document_inline_count,
+        TEX_DOCUMENT_INLINE_CAPACITY)
+    testing.expect_value(t, tex_parse_document(string(bytes[:]), output),
+        Tex_Parse_Status.Work_Limit)
+    testing.expect_value(t, output.document_block_count, 0)
+    testing.expect_value(t, output.document_inline_count, 0)
+}
+
+// Verify semantic display-row storage admits its exact capacity and no more.
+@(test)
+tex_semantic_builder_enforces_exact_display_row_capacity :: proc(t: ^testing.T) {
+    output := tex_math_test_output()
+    defer free(output)
+    testing.expect(t, tex_semantic_output_init(output))
+    for index in 0..<TEX_DOCUMENT_DISPLAY_ROW_CAPACITY {
+        testing.expect(t, tex_semantic_append_document_display_row(output, {
+            source = {index, 1}, primary_program = index,
+        }) >= 0)
+    }
+    testing.expect_value(t, output.document_display_row_count,
+        TEX_DOCUMENT_DISPLAY_ROW_CAPACITY)
+    testing.expect_value(t, tex_semantic_append_document_display_row(output, {}), -1)
+    testing.expect_value(t, output.status, Tex_Parse_Status.Work_Limit)
 }
 
 //   Verify semantic text storage admits its exact byte capacity and no more.

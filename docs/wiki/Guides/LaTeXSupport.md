@@ -10,6 +10,7 @@ breaks, and Euclid inline shapes.
 1. [Recommended Usage](#recommended-usage)
 1. [Modes And Classification](#modes-and-classification)
 1. [Document Mode](#document-mode)
+1. [Document Line Breaking](#document-line-breaking)
 1. [Math Mode](#math-mode)
 1. [Display-Math Layout Contract](#display-math-layout-contract)
 1. [Character Support](#character-support)
@@ -77,19 +78,92 @@ Document mode supports a deliberately small LaTeX-like prose language:
 - Plain Unicode text.
 - `\textbf{...}` for bold text.
 - `\textit{...}` and `\emph{...}` for italic text.
+- `\textnormal{...}` to reset weight and italic style within its group.
+- `\texttt{...}` for the resident JuliaMono text family.
+- Scoped `\bfseries` and `\itshape` declarations inside brace groups.
 - `\textcolor{color}{...}` for inline prose color.
 - Nested style commands; flags accumulate, so bold italic text is supported.
+- Literal text specials with `\%`, `\#`, `\_`, `\&`, `\{`, and `\}`.
+- Controlled spaces with a backslash followed by a literal space, and nonbreaking
+    spaces with `~`.
 - Inline math with `$...$` or `\(...\)`.
 - Display math with `$$...$$` or `\[...\]`.
+- Technical displays with `equation`, `align`, `gather`, and `multline`, including
+    their starred forms.
 - Forced line breaks with `\\` or `\newline`.
-- Paragraph breaks from a blank source line.
+- Paragraph breaks from a blank source line or `\par`.
+- `\noindent` at paragraph start to suppress the normal one-em first-line indent.
+- `center`, `flushleft`, and `flushright` environments for paragraph alignment.
+- Comments from an unescaped `%` through the source newline.
 - Inline Euclid shapes through `\euclidpoint`, `\euclidline`,
     `\euclidcircle`, `\euclidbox`, `\euclidangle`, `\euclidsemicircle`,
     `\euclidperpendicular`, `\euclidtriangle`, and `\euclidpentagon`.
 
-A single source newline in prose normalizes to one space. A blank line emits a
-paragraph break. Display math receives surrounding line breaks unless adjacent
-document runs already provide them.
+A single source newline in prose normalizes to one breakable space. A blank line or
+`\par` ends the current semantic paragraph. Display math is retained as a dedicated
+semantic block with measured vertical spacing; authors should not add blank lines merely
+to pad a display.
+
+Document grammar revision 29 retains bounded, font-independent levels: at most 256
+paragraph or display blocks and at most 2,048 inline text, space, math, shape, penalty,
+or forced-break nodes, plus at most 512 technical display rows. Inline and row records
+preserve source byte spans, style and color,
+math-program identity, and shape values. Breakable and nonbreaking spaces remain
+distinct; each carries one canonical space byte for shaping, and `~` produces
+nonbreaking space semantics. Capacity exhaustion rejects the complete structured
+document and leaves the caller-authored fallback authoritative.
+
+### Prose Style And Alignment Matrix
+
+| Form | Native behavior |
+| --- | --- |
+| `\textbf{...}` | Select the resident bold JuliaMono variant. |
+| `\textit{...}`, `\emph{...}` | Select the resident italic JuliaMono variant. |
+| `{\bfseries ...}`, `{\itshape ...}` | Apply a declaration through the end of the current group; declarations compose. |
+| `\textnormal{...}` | Reset weight and italic to JuliaMono Regular while preserving inherited color. |
+| `\texttt{...}` | Retain the resident JuliaMono family and inherited weight or italic flags. |
+| `\textrm{...}` | Unsupported because no resident roman prose face exists; reject the complete document. |
+| `\textsc{...}` | Unsupported because no resident small-caps face exists; reject the complete document. |
+| `center` | Center each paragraph in the environment and suppress first-line indentation. |
+| `flushleft` | Left-align each paragraph in the environment and suppress first-line indentation. |
+| `flushright` | Right-align each paragraph in the environment and suppress first-line indentation. |
+
+Brace groups scope declarations without producing visible characters. Environment names
+and closing commands must match exactly. Unknown commands, unavailable face requests,
+unclosed groups or environments, and unmatched `\end{...}` commands fail the complete
+structured path.
+
+The Julia-host snapshot transaction copies exact source bytes, semantic text, document
+descriptors, blocks, and inlines into bounded slot-owned storage. Source/text spans,
+block child ranges, and math-program references are rewritten to snapshot-relative
+offsets and validated before publication. No document-store handle or
+animation-generation pointer reaches display state. Complete documents compile only
+the native semantic layout; command-layout construction remains limited to standalone
+math and explicit low-level Dynview streams. The display thread draws, scrolls, and
+computes copy interaction geometry from the resulting sealed semantic layout.
+
+## Document Line Breaking
+
+Paragraph layout searches legal semantic spaces and explicit penalties for the
+lowest-demerit complete line sequence. Cubic line badness uses each space's measured
+stretch and shrink, semantic penalties influence candidate selection, and abrupt
+changes between tight, normal, loose, and very loose lines receive an additional cost.
+Forced breaks terminate the current search path. Hyphenation is not supported.
+
+Interior paragraph lines remain left anchored and adjust their breakable spaces to the
+available width. Stretch uses the measured stretch ratio; shrink stops at the measured
+shrink capacity. Final lines and lines ending at an explicit forced break remain ragged
+with natural spacing. Centered and right-aligned display blocks retain their block
+alignment after line breaking. Ordinary left-aligned paragraphs reserve a one-em
+first-line indent during breaking and placement; `\noindent` and alignment environments
+suppress that reservation. An indivisible sequence wider than the available measure is
+retained as an explicit overfull line.
+
+Search storage and work are bounded: one candidate per layout node plus the terminal
+boundary, four fitness states per candidate, and at most 1,048,576 transition checks per
+block. Candidate, state, or work exhaustion discards the incomplete search and runs the
+deterministic last-fitting greedy breaker over the complete block. Greedy fallback uses
+natural spacing and preserves the same forced-break and overfull-atom behavior.
 
 Inline and display math select different TeX math styles. `$...$` and `\(...\)`
 compile at Text style; `$$...$$` and `\[...\]` compile at Display style. Text style
@@ -97,6 +171,31 @@ keeps fraction branches script-sized with tighter shifts, places large-operator 
 beside the operator instead of above and below, and suppresses display operator
 variants, so inline math stays close to the height of surrounding prose. Source with no
 outer delimiter is treated as a standalone expression and uses Display style.
+
+## Technical Display Environments
+
+| Environment | Native document behavior |
+| --- | --- |
+| `equation` | Exactly one centered row with a document-local number. |
+| `equation*` | Exactly one centered unnumbered row. |
+| `align` | One top-level `&` alignment point per row; eligible rows are numbered. |
+| `align*` | Measured aligned rows without numbers. |
+| `gather` | Independently centered, numbered rows. |
+| `gather*` | Independently centered unnumbered rows. |
+| `multline` | Left, centered, and right placement for first, middle, and final rows; only the final row is numbered. |
+| `multline*` | The same width-sensitive placement without a number. |
+
+Technical environments form one semantic display block and retain one bounded row
+record per `\\`. Inner matrix and preset-environment separators remain part of their
+own math program and do not split the outer display. `\notag` is accepted once at the
+end of an `align` row and suppresses that row's number; it is rejected elsewhere.
+
+Numbering starts at 1 for each compiled document and is fixed when the native snapshot
+is built, so font and width rebuilds do not renumber rows. Number boxes occupy the right
+edge of the available measure. When content would collide with a number, the content
+uses the full measure, the number moves below that row, and overfull telemetry records
+the fallback. Labels, references, explicit tags, counter commands, and numbering shared
+between documents are not supported.
 
 ### Inline Text Colors
 
@@ -173,7 +272,8 @@ raw"\euclidtriangle[color=steelblue,width=2,height=1.5,thickness=2,filled,fill_c
 raw"\euclidpentagon[color=steelblue,width=2,height=2,thickness=2,filled,fill_color=lightgray,edge1_color=red,edge2_color=green,edge3_color=blue,edge4_color=teal,edge5_color=orange]"
 ```
 
-Document mode does not implement general LaTeX commands or environments.
+Document mode does not implement general LaTeX commands, font substitution, or
+environments beyond `center`, `flushleft`, and `flushright`.
 Unknown commands, malformed delimiters, invalid shape options, or unmatched
 style braces cause document parsing to fail and structured output to fall back.
 
@@ -456,15 +556,17 @@ Available cache APIs:
 In normal animation usage, calling `replay_emit_math_block!` is sufficient and
 cache behavior is automatic.
 
-The current cache applies to math parsing and compiled math programs. Document
-runs are parsed per `emit_latex_view_text!` call; embedded math expressions then
-reuse the math cache.
+The current cache applies to math parsing and compiled math programs. Exact-source
+documents are interned for the animation generation; embedded math expressions reuse
+the math cache.
 
 ## Fallback And Failure Behavior
 
 Fallback text is part of the API contract, not an exceptional afterthought.
 `emit_latex_view_text!` writes the supplied fallback as the Dynview copy payload
-and returns that same string whether structured emission succeeds or fails.
+and returns that same string whether structured emission succeeds or fails. Copy-icon
+geometry comes from the sealed semantic block bounds used by drawing, while copied
+content remains the authored fallback.
 
 Document mode fails closed: unsupported commands, malformed style groups,
 unclosed math delimiters, empty math fragments, and invalid Euclid shape options
@@ -492,15 +594,15 @@ structured stream the only source of user-visible meaning.
 ## Known Limitations
 
 - This is not a TeX engine. Macros, packages, declarations, sections, lists,
-    document tables, top-level equation environments, and general
-    `\begin{...}` document environments are unsupported.
+    document tables, and unlisted general `\begin{...}` document environments are
+    unsupported.
 - Document styling is limited to nested bold and italic spans. There is no
     document-level font size, color, heading, or alignment syntax.
 - Math delimiters in document mode use direct closer search; nested delimiter
     escaping is not general TeX-compatible parsing.
 - Table support is limited to the documented rectangular matrix, array, wrapper,
-    and nested preset environments. Top-level numbering, tags, and references are
-    unsupported.
+    and nested preset environments. Technical display numbering is document-local;
+    tags, labels, references, and counter manipulation are unsupported.
 - `\mathfrak`, `\mathsf`, and `\mathtt` are not supported. `\mathit` excludes
     digits, and `\mathcal` is uppercase-only.
 - Raw Unicode math is best effort; command forms provide more reliable semantic
@@ -564,7 +666,7 @@ flowchart LR
 | --- | --- | --- |
 | Tokenization, parsing, and normalization | `src/dynview/parse/` | Preserves frozen recovery behavior or rejects atomically |
 | Semantic reuse | `src/dynview/core/document_store.odin` | Bounded exact-source interning and stable negative caching |
-| Snapshot staging | `src/bridge/dynview_native_tex.odin` | Rolls back the complete fragment on failure |
+| Snapshot staging | `src/bridge/dynview_native_tex.odin` | Rebases pointer-free document ranges and rolls back the complete fragment on failure |
 | Shaping, layout, and derived caches | `src/dynview/math/`, `src/dynview/layout/`, `src/dynview/compile/` | Retains fallback when a rebuild cannot publish |
 | User-visible copy fallback contract | `emit_latex_view_text!` | Always returns supplied fallback string |
 

@@ -489,7 +489,7 @@ scenario_runtime_capture_screenshot :: proc(
         return false
     }
     rl.TakeScreenshot(path)
-    return os.exists(string(runtime.capture.path[:runtime.capture.path_count]))
+    return rl.FileExists(path)
 }
 
 //   Report whether the scenario reached any terminal outcome.

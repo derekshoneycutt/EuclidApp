@@ -67,6 +67,11 @@ View_Snapshot_Record_Payloads :: struct {
     math_commands: []core.Dynview_Command,
     math_nodes: []core.Dynview_Math_Node,
     math_table_descriptors: []core.Dynview_Math_Table_Descriptor,
+    document_text: []u8,
+    documents: []core.Dynview_Document,
+    document_blocks: []core.Dynview_Document_Block,
+    document_inlines: []core.Dynview_Document_Inline,
+    document_display_rows: []core.Dynview_Document_Display_Row,
 }
 
 View_Snapshot_Sealed_Records :: struct {
@@ -75,6 +80,11 @@ View_Snapshot_Sealed_Records :: struct {
     descriptors: []core.Dynview_Math_Table_Descriptor,
     math_commands: []core.Dynview_Command,
     nodes: []core.Dynview_Math_Node,
+    document_text: []u8,
+    documents: []core.Dynview_Document,
+    document_blocks: []core.Dynview_Document_Block,
+    document_inlines: []core.Dynview_Document_Inline,
+    document_display_rows: []core.Dynview_Document_Display_Row,
 }
 
 Scratchpad_Async_Kind :: core.Scratchpad_Async_Kind
@@ -533,7 +543,9 @@ view_snapshot_is_valid :: proc(slot: ^View_Snapshot) -> bool {
         &slot^.fallback_text_builder, slot^.fallback_text,
         VIEW_SNAPSHOT_TEXT_CAPACITY) || !view_snapshot_text_payload_is_valid(
         &slot^.command_text_builder, slot^.command_text,
-        core.DYNVIEW_MAX_TEXT_BYTES) {
+        core.DYNVIEW_MAX_TEXT_BYTES) || !view_snapshot_text_payload_is_valid(
+        &slot^.document_text_builder, slot^.document_text,
+        core.DYNVIEW_MAX_DOCUMENT_BYTES) {
         return false
     }
     if !view_snapshot_record_payloads_are_valid(slot) {
@@ -560,7 +572,8 @@ view_snapshot_is_valid :: proc(slot: ^View_Snapshot) -> bool {
             return false
         }
     }
-    return view_snapshot_math_records_are_valid(slot)
+    return view_snapshot_math_records_are_valid(slot) &&
+        view_snapshot_documents_are_valid(slot)
 }
 
 //   Validate one sealed native table descriptor at the publication boundary.
@@ -598,7 +611,15 @@ view_snapshot_record_payloads_are_valid :: proc(slot: ^View_Snapshot) -> bool {
         view_snapshot_record_payload_is_valid(&slot^.math_command_builder,
             slot^.math_commands, core.DYNVIEW_MAX_MATH_COMMANDS) &&
         view_snapshot_record_payload_is_valid(&slot^.math_node_builder,
-            slot^.math_nodes, core.DYNVIEW_MAX_MATH_NODES)
+            slot^.math_nodes, core.DYNVIEW_MAX_MATH_NODES) &&
+        view_snapshot_record_payload_is_valid(&slot^.document_builder,
+            slot^.documents, core.DYNVIEW_MAX_DOCUMENTS) &&
+        view_snapshot_record_payload_is_valid(&slot^.document_block_builder,
+            slot^.document_blocks, core.DYNVIEW_MAX_DOCUMENT_BLOCKS) &&
+        view_snapshot_record_payload_is_valid(&slot^.document_inline_builder,
+            slot^.document_inlines, core.DYNVIEW_MAX_DOCUMENT_INLINES) &&
+        view_snapshot_record_payload_is_valid(&slot^.document_display_row_builder,
+            slot^.document_display_rows, core.DYNVIEW_MAX_DOCUMENT_DISPLAY_ROWS)
 }
 
 //   Require one record slice to alias its sealed builder's populated prefix.
@@ -733,6 +754,136 @@ view_snapshot_span_is_valid :: proc(offset, count, total: int) -> bool {
 //   Validate one record range; empty ranges permit the canonical zero start.
 view_snapshot_range_is_valid :: proc(start, count, total: int) -> bool {
     return view_snapshot_span_is_valid(start, count, total)
+}
+
+//   Validate all semantic document ownership ranges and inline references.
+view_snapshot_documents_are_valid :: proc(slot: ^View_Snapshot) -> bool {
+    for document in slot^.documents {
+        if !view_snapshot_document_is_valid(slot, document) {
+            return false
+        }
+        blocks := slot^.document_blocks[
+            document.block_start:document.block_start + document.block_count]
+        for block in blocks {
+            if !view_snapshot_document_block_is_valid(document, block) {
+                return false
+            }
+        }
+        items := slot^.document_inlines[
+            document.inline_start:document.inline_start + document.inline_count]
+        for item in items {
+            if !view_snapshot_document_inline_is_valid(slot, document, item) {
+                return false
+            }
+        }
+        rows := slot^.document_display_rows[document.display_row_start:
+            document.display_row_start + document.display_row_count]
+        for row in rows {
+            if !view_snapshot_document_display_row_is_valid(slot, document, row) {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+//   Validate one document descriptor before slicing any child records.
+view_snapshot_document_is_valid :: proc(
+    slot: ^View_Snapshot, document: core.Dynview_Document) -> bool {
+
+    return view_snapshot_span_is_valid(
+        document.source_offset, document.source_count, len(slot^.document_text)) &&
+        view_snapshot_span_is_valid(
+            document.text_offset, document.text_count, len(slot^.document_text)) &&
+        view_snapshot_range_is_valid(document.block_start, document.block_count,
+            len(slot^.document_blocks)) &&
+        view_snapshot_range_is_valid(document.inline_start, document.inline_count,
+            len(slot^.document_inlines)) &&
+        view_snapshot_range_is_valid(document.display_row_start,
+            document.display_row_count, len(slot^.document_display_rows))
+}
+
+//   Validate one block's kind, source, and child range within its document.
+view_snapshot_document_block_is_valid :: proc(
+    document: core.Dynview_Document,
+    block: core.Dynview_Document_Block) -> bool {
+
+    kind := int(block.kind)
+    alignment := int(block.alignment)
+    return kind >= int(core.Dynview_Document_Block_Kind.Paragraph) &&
+        kind <= int(core.Dynview_Document_Block_Kind.Display) &&
+        alignment >= int(core.Dynview_Document_Alignment.Left) &&
+        alignment <= int(core.Dynview_Document_Alignment.Right) &&
+        view_snapshot_subspan_is_valid(document.source_offset,
+            document.source_count, block.source_offset, block.source_count) &&
+        view_snapshot_subspan_is_valid(document.inline_start,
+            document.inline_count, block.inline_start, block.inline_count) &&
+        view_snapshot_subspan_is_valid(document.display_row_start,
+            document.display_row_count, block.display_row_start,
+            block.display_row_count)
+}
+
+// Validate one display row's source range, programs, alignment, and number.
+view_snapshot_document_display_row_is_valid :: proc(
+    slot: ^View_Snapshot, document: core.Dynview_Document,
+    row: core.Dynview_Document_Display_Row) -> bool {
+
+    alignment := int(row.alignment)
+    return view_snapshot_subspan_is_valid(document.source_offset,
+        document.source_count, row.source_offset, row.source_count) &&
+        row.primary_program_id >= 0 &&
+        row.primary_program_id < len(slot^.math_programs) &&
+        (row.secondary_program_id == -1 ||
+            row.secondary_program_id >= 0 &&
+            row.secondary_program_id < len(slot^.math_programs)) &&
+        alignment >= int(core.Dynview_Document_Alignment.Left) &&
+        alignment <= int(core.Dynview_Document_Alignment.Right) &&
+        row.number >= 0
+}
+
+//   Validate one inline's semantic kind, byte spans, and optional math program.
+view_snapshot_document_inline_is_valid :: proc(
+    slot: ^View_Snapshot,
+    document: core.Dynview_Document,
+    item: core.Dynview_Document_Inline) -> bool {
+
+    kind := int(item.kind)
+    if kind < int(core.Dynview_Document_Inline_Kind.Text) ||
+        kind > int(core.Dynview_Document_Inline_Kind.Forced_Break) ||
+        !view_snapshot_subspan_is_valid(document.source_offset,
+            document.source_count, item.source_offset, item.source_count) ||
+        !view_snapshot_subspan_is_valid(document.text_offset,
+            document.text_count, item.text_offset, item.text_count) {
+        return false
+    }
+    if item.kind == .Math {
+        root_style := int(item.root_style)
+        return item.math_program_id >= 0 &&
+            item.math_program_id < len(slot^.math_programs) &&
+            root_style >= int(core.Dynview_Math_Style_Level.Display) &&
+            root_style <= int(core.Dynview_Math_Style_Level.Text)
+    }
+    if item.math_program_id != -1 {
+        return false
+    }
+    if item.kind == .Space {
+        space_kind := int(item.space_kind)
+        return space_kind >= int(core.Dynview_Document_Space_Kind.Breakable) &&
+            space_kind <= int(core.Dynview_Document_Space_Kind.Controlled)
+    }
+    return item.kind != .Shape || item.shape.present
+}
+
+//   Require one child range to be fully contained by its owner range.
+view_snapshot_subspan_is_valid :: proc(
+    owner_start, owner_count, child_start, child_count: int) -> bool {
+
+    if owner_start < 0 || owner_count < 0 || child_start < owner_start ||
+        child_count < 0 {
+        return false
+    }
+    relative_start := child_start-owner_start
+    return child_count <= owner_count && relative_start <= owner_count-child_count
 }
 
 //   Return fallback text only when it belongs to the active animation.
@@ -875,7 +1026,15 @@ published_view_snapshot_equals :: proc(
         view_snapshot_slice_equal(published^.math_table_descriptors,
             candidate^.math_table_descriptors) &&
         view_snapshot_slice_equal(published^.math_commands, candidate^.math_commands) &&
-        view_snapshot_slice_equal(published^.math_nodes, candidate^.math_nodes)
+        view_snapshot_slice_equal(published^.math_nodes, candidate^.math_nodes) &&
+        view_snapshot_slice_equal(published^.document_text, candidate^.document_text) &&
+        view_snapshot_slice_equal(published^.documents, candidate^.documents) &&
+        view_snapshot_slice_equal(
+            published^.document_blocks, candidate^.document_blocks) &&
+        view_snapshot_slice_equal(
+            published^.document_inlines, candidate^.document_inlines) &&
+        view_snapshot_slice_equal(published^.document_display_rows,
+            candidate^.document_display_rows)
 }
 
 //   Return true when two payload slices have identical values in identical order.
@@ -959,15 +1118,22 @@ reset_view_snapshot_slot_payload :: proc(slot: ^View_Snapshot) {
     slot^.math_table_descriptors = nil
     slot^.math_commands = nil
     slot^.math_nodes = nil
+    slot^.document_text = nil
+    slot^.documents = nil
+    slot^.document_blocks = nil
+    slot^.document_inlines = nil
+    slot^.document_display_rows = nil
 }
 
 //   Initialize every future arena-backed payload builder for one free slot generation.
 prepare_view_snapshot_builders :: proc(slot: ^View_Snapshot) -> bool {
-    statuses := [7]core.Bounded_Builder_Status{
+    statuses := [12]core.Bounded_Builder_Status{
         core.bounded_byte_builder_init(
             &slot^.fallback_text_builder, VIEW_SNAPSHOT_TEXT_CAPACITY, &slot^.arena),
         core.bounded_byte_builder_init(
             &slot^.command_text_builder, core.DYNVIEW_MAX_TEXT_BYTES, &slot^.arena),
+        core.bounded_byte_builder_init(
+            &slot^.document_text_builder, core.DYNVIEW_MAX_DOCUMENT_BYTES, &slot^.arena),
         core.bounded_element_builder_init(
             &slot^.command_builder, core.DYNVIEW_MAX_COMMANDS, &slot^.arena),
         core.bounded_element_builder_init(
@@ -978,6 +1144,14 @@ prepare_view_snapshot_builders :: proc(slot: ^View_Snapshot) -> bool {
             &slot^.math_command_builder, core.DYNVIEW_MAX_MATH_COMMANDS, &slot^.arena),
         core.bounded_element_builder_init(
             &slot^.math_node_builder, core.DYNVIEW_MAX_MATH_NODES, &slot^.arena),
+        core.bounded_element_builder_init(
+            &slot^.document_builder, core.DYNVIEW_MAX_DOCUMENTS, &slot^.arena),
+        core.bounded_element_builder_init(&slot^.document_block_builder,
+            core.DYNVIEW_MAX_DOCUMENT_BLOCKS, &slot^.arena),
+        core.bounded_element_builder_init(&slot^.document_inline_builder,
+            core.DYNVIEW_MAX_DOCUMENT_INLINES, &slot^.arena),
+        core.bounded_element_builder_init(&slot^.document_display_row_builder,
+            core.DYNVIEW_MAX_DOCUMENT_DISPLAY_ROWS, &slot^.arena),
     }
     for status in statuses {
         if status != .Ok {
@@ -1005,6 +1179,11 @@ prepare_view_snapshot_slot :: proc(slot: ^View_Snapshot) -> bool {
     slot^.math_table_descriptor_builder = {}
     slot^.math_command_builder = {}
     slot^.math_node_builder = {}
+    slot^.document_text_builder = {}
+    slot^.document_builder = {}
+    slot^.document_block_builder = {}
+    slot^.document_inline_builder = {}
+    slot^.document_display_row_builder = {}
     return false
 }
 
@@ -1014,7 +1193,8 @@ view_snapshot_slots_init :: proc(service: ^Julia_Runtime_Service) -> bool {
         return false
     }
     for &slot, slot_index in service^.view_snapshots {
-        if core.arena_owner_init(&slot.arena) {
+        if core.arena_owner_init(
+            &slot.arena, core.VIEW_SNAPSHOT_ARENA_RESERVATION) {
             continue
         }
         for initialized_index in 0..<slot_index {
@@ -1059,6 +1239,12 @@ build_generated_view_snapshot_payloads :: proc(
         math_nodes = cache^.math_nodes[:cache^.math_node_count],
         math_table_descriptors = cache^.math_table_descriptors[
             :cache^.math_table_descriptor_count],
+        document_text = cache^.document_text[:cache^.document_text_count],
+        documents = cache^.documents[:cache^.document_count],
+        document_blocks = cache^.document_blocks[:cache^.document_block_count],
+        document_inlines = cache^.document_inlines[:cache^.document_inline_count],
+        document_display_rows = cache^.document_display_rows[
+            :cache^.document_display_row_count],
     })
 }
 
@@ -1091,22 +1277,8 @@ build_view_snapshot_record_payloads :: proc(
     slot: ^View_Snapshot,
     payloads: View_Snapshot_Record_Payloads) -> bool {
 
-    statuses := [5]core.Bounded_Builder_Status{
-        core.bounded_element_builder_append(
-            &slot^.command_builder, payloads.commands),
-        core.bounded_element_builder_append(
-            &slot^.math_program_builder, payloads.math_programs),
-        core.bounded_element_builder_append(
-            &slot^.math_table_descriptor_builder, payloads.math_table_descriptors),
-        core.bounded_element_builder_append(
-            &slot^.math_command_builder, payloads.math_commands),
-        core.bounded_element_builder_append(
-            &slot^.math_node_builder, payloads.math_nodes),
-    }
-    for status in statuses {
-        if status != .Ok {
-            return false
-        }
+    if !append_view_snapshot_record_payloads(slot, payloads) {
+        return false
     }
     sealed, ok := seal_view_snapshot_record_payloads(slot)
     if !ok {
@@ -1117,6 +1289,46 @@ build_view_snapshot_record_payloads :: proc(
     slot^.math_table_descriptors = sealed.descriptors
     slot^.math_commands = sealed.math_commands
     slot^.math_nodes = sealed.nodes
+    slot^.document_text = sealed.document_text
+    slot^.documents = sealed.documents
+    slot^.document_blocks = sealed.document_blocks
+    slot^.document_inlines = sealed.document_inlines
+    slot^.document_display_rows = sealed.document_display_rows
+    return true
+}
+
+//   Append every semantic payload family before any builder is sealed.
+append_view_snapshot_record_payloads :: proc(
+    slot: ^View_Snapshot,
+    payloads: View_Snapshot_Record_Payloads) -> bool {
+
+    statuses := [10]core.Bounded_Builder_Status{
+        core.bounded_byte_builder_append(
+            &slot^.document_text_builder, payloads.document_text),
+        core.bounded_element_builder_append(
+            &slot^.command_builder, payloads.commands),
+        core.bounded_element_builder_append(
+            &slot^.math_program_builder, payloads.math_programs),
+        core.bounded_element_builder_append(
+            &slot^.math_table_descriptor_builder, payloads.math_table_descriptors),
+        core.bounded_element_builder_append(
+            &slot^.math_command_builder, payloads.math_commands),
+        core.bounded_element_builder_append(
+            &slot^.math_node_builder, payloads.math_nodes),
+        core.bounded_element_builder_append(
+            &slot^.document_builder, payloads.documents),
+        core.bounded_element_builder_append(
+            &slot^.document_block_builder, payloads.document_blocks),
+        core.bounded_element_builder_append(
+            &slot^.document_inline_builder, payloads.document_inlines),
+        core.bounded_element_builder_append(&slot^.document_display_row_builder,
+            payloads.document_display_rows),
+    }
+    for status in statuses {
+        if status != .Ok {
+            return false
+        }
+    }
     return true
 }
 
@@ -1134,11 +1346,25 @@ seal_view_snapshot_record_payloads :: proc(
         core.bounded_element_builder_seal(&slot^.math_command_builder)
     nodes, node_status :=
         core.bounded_element_builder_seal(&slot^.math_node_builder)
+    document_text, document_text_status :=
+        core.bounded_byte_builder_seal(&slot^.document_text_builder)
+    documents, document_status :=
+        core.bounded_element_builder_seal(&slot^.document_builder)
+    document_blocks, block_status :=
+        core.bounded_element_builder_seal(&slot^.document_block_builder)
+    document_inlines, inline_status :=
+        core.bounded_element_builder_seal(&slot^.document_inline_builder)
+    document_display_rows, row_status :=
+        core.bounded_element_builder_seal(&slot^.document_display_row_builder)
     if command_status != .Ok || program_status != .Ok || descriptor_status != .Ok ||
-        math_command_status != .Ok || node_status != .Ok {
+        math_command_status != .Ok || node_status != .Ok ||
+        document_text_status != .Ok || document_status != .Ok ||
+        block_status != .Ok || inline_status != .Ok || row_status != .Ok {
         return {}, false
     }
-    return {commands, programs, descriptors, math_commands, nodes}, true
+    return {commands, programs, descriptors, math_commands, nodes,
+        document_text, documents, document_blocks, document_inlines,
+        document_display_rows}, true
 }
 
 //   Reset worker-only semantic emission storage for one generation.
@@ -1157,6 +1383,11 @@ reset_view_snapshot_staging :: proc(staging: ^core.Dynview_System) {
     staging^.compile_cache.math_table_descriptor_count = 0
     staging^.compile_cache.math_command_count = 0
     staging^.compile_cache.math_node_count = 0
+    staging^.compile_cache.document_text_count = 0
+    staging^.compile_cache.document_count = 0
+    staging^.compile_cache.document_block_count = 0
+    staging^.compile_cache.document_inline_count = 0
+    staging^.compile_cache.document_display_row_count = 0
     staging^.compile_cache.last_error_code = 0
     staging^.compile_cache.is_valid = false
 }
@@ -1177,6 +1408,11 @@ install_view_snapshot_content :: proc(
         math_table_descriptors = slot^.math_table_descriptors,
         math_commands = slot^.math_commands,
         math_nodes = slot^.math_nodes,
+        document_text = slot^.document_text,
+        documents = slot^.documents,
+        document_blocks = slot^.document_blocks,
+        document_inlines = slot^.document_inlines,
+        document_display_rows = slot^.document_display_rows,
     }
     buffer := &runtime^.command_buffer
     buffer^.revision = slot^.command_revision
@@ -1192,6 +1428,11 @@ install_view_snapshot_content :: proc(
     cache^.math_table_descriptor_count = len(slot^.math_table_descriptors)
     cache^.math_command_count = len(slot^.math_commands)
     cache^.math_node_count = len(slot^.math_nodes)
+    cache^.document_text_count = len(slot^.document_text)
+    cache^.document_count = len(slot^.documents)
+    cache^.document_block_count = len(slot^.document_blocks)
+    cache^.document_inline_count = len(slot^.document_inlines)
+    cache^.document_display_row_count = len(slot^.document_display_rows)
     cache^.is_valid = false
     cache^.layout_is_valid = false
     cache^.copy_hit_target_count = 0

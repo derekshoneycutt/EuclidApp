@@ -703,13 +703,17 @@ rebuild_copy_hit_targets :: proc(
     cache := &runtime^.compile_cache
     cache^.copy_hit_targets = nil
     cache^.copy_hit_target_count = 0
-    if !cache^.is_valid || !cache^.layout_is_valid {
+    semantic_document := dynlayout.document_layout_is_authoritative(runtime)
+    if !cache^.is_valid || (!semantic_document && !cache^.layout_is_valid) {
         return dyncore.DYNVIEW_STATUS_OK
     }
     clear_status := app_core.bounded_element_builder_clear(
         &cache^.copy_hit_target_builder)
     if clear_status != .Ok {
         return dyncore.compiled_builder_status(clear_status)
+    }
+    if semantic_document {
+        return rebuild_document_copy_hit_target(cache, layout)
     }
 
     panel_top := layout.panel.y
@@ -722,6 +726,38 @@ rebuild_copy_hit_targets :: proc(
             return status
         }
         last_hover_bottom = next_bottom
+    }
+    targets, view_status := app_core.bounded_element_builder_view(
+        &cache^.copy_hit_target_builder)
+    if view_status != .Ok {
+        return dyncore.compiled_builder_status(view_status)
+    }
+    cache^.copy_hit_targets = targets
+    cache^.copy_hit_target_count = len(targets)
+    return dyncore.DYNVIEW_STATUS_OK
+}
+
+//   Build the authored document copy action from sealed semantic block bounds.
+rebuild_document_copy_hit_target :: proc(
+    cache: ^app_core.Dynview_Compile_Cache,
+    layout: Copy_Hit_Target_Layout) -> i32 {
+
+    blocks := cache^.document_layout_blocks
+    if cache^.copy_block_count != 1 || len(blocks) == 0 {
+        return dyncore.DYNVIEW_STATUS_ILLEGAL_STATE
+    }
+    first := blocks[0]
+    last := blocks[len(blocks)-1]
+    content_origin := layout.panel.y + layout.text_padding - layout.scroll_y
+    rows := Visible_Copy_Block_Rows{
+        top = content_origin + first.reserved_top,
+        bottom = content_origin + last.reserved_bottom,
+        last_hover_bottom = layout.panel.y,
+    }
+    _, status := append_visible_copy_hit_target(
+        cache, cache^.copy_blocks[0], layout, rows)
+    if status != dyncore.DYNVIEW_STATUS_OK {
+        return status
     }
     targets, view_status := app_core.bounded_element_builder_view(
         &cache^.copy_hit_target_builder)
@@ -842,6 +878,8 @@ clear_partial_derived_views :: proc(cache: ^app_core.Dynview_Compile_Cache) {
     cache^.copy_hit_target_builder = {}
     cache^.copy_block_count = 0
     cache^.copy_hit_target_count = 0
+    clear_document_shaped_records(cache)
+    dynlayout.document_layout_clear(cache)
     dynmath.layout_reset_cache(cache)
     cache^.is_valid = false
 }
@@ -865,17 +903,34 @@ prepare_math_working_records :: proc(runtime: ^app_core.Dynview_System) {
 compile_derived_views :: proc(
     runtime: ^app_core.Dynview_System,
     cache_arena: ^app_core.Arena_Owner,
-    shaping_service: dynmath.Math_Shaping_Service) -> i32 {
+    shaping_service: dynmath.Math_Shaping_Service,
+    prose_service: Document_Prose_Shaping_Service) -> i32 {
     status := rebuild_compiled_plain_text(runtime, cache_arena)
     if status != dyncore.DYNVIEW_STATUS_OK {
         return status
+    }
+    prose_status := rebuild_document_shaped_cache(runtime, cache_arena, prose_service)
+    if prose_status != .Ok {
+        return shaped_builder_error_status(prose_status)
     }
     shaping_status := dynmath.rebuild_shaped_math_cache(
         runtime, cache_arena, shaping_service)
     if shaping_status != .Ok {
         return shaped_builder_error_status(shaping_status)
     }
-    return dynlayout.rebuild_layout_cache(runtime, cache_arena)
+    if len(runtime^.content.documents) > 0 {
+        dynmath.layout_reset_cache(&runtime^.compile_cache)
+    } else {
+        layout_status := dynlayout.rebuild_layout_cache(runtime, cache_arena)
+        if layout_status != dyncore.DYNVIEW_STATUS_OK {
+            return layout_status
+        }
+    }
+    document_status := dynlayout.rebuild_document_layout_cache(runtime, cache_arena)
+    if document_status == .Ok {
+        return dyncore.DYNVIEW_STATUS_OK
+    }
+    return shaped_builder_error_status(document_status)
 }
 
 //   Compile invalidated command and layout caches through worker-owned arena lifetime.
@@ -886,7 +941,8 @@ compile_derived_views :: proc(
 compile_if_needed :: proc(
     runtime: ^app_core.Dynview_System,
     cache_arena: ^app_core.Arena_Owner,
-    shaping_service: dynmath.Math_Shaping_Service = {}) {
+    shaping_service: dynmath.Math_Shaping_Service = {},
+    prose_service: Document_Prose_Shaping_Service = {}) {
 
     if runtime == nil || !runtime^.enabled {
         return
@@ -908,7 +964,8 @@ compile_if_needed :: proc(
     }
     buffer := &runtime^.command_buffer
     cache^.last_error_code = dyncore.DYNVIEW_STATUS_OK
-    status := compile_derived_views(runtime, cache_arena, shaping_service)
+    status := compile_derived_views(
+        runtime, cache_arena, shaping_service, prose_service)
     cache^.compiled_revision = buffer^.revision
     cache^.compiled_command_count = len(dyncore.command_buffer_commands(buffer))
     cache^.compiled_text_bytes_len = len(dyncore.command_buffer_text(buffer))

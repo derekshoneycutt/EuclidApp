@@ -4,7 +4,8 @@
 {"wait_event":"dynview_published","correlation":"z2","timeout_ms":10000}
 {"do":"reset_animation"}
 {"wait_event":"animation_cycle_boundary","timeout_ms":10000}
-{"wait_event":"dynview_published","timeout_ms":10000}
+{"wait_event":"scene_batch_committed","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
 {"select_animation":"Cₙ","as":"cn"}
 {"wait_event":"animation_selected","correlation":"cn","timeout_ms":10000}
 {"wait_event":"dynview_published","correlation":"cn","timeout_ms":10000}
@@ -14,7 +15,7 @@
 {"do":"reload_runtime","as":"reload"}
 {"wait_event":"runtime_reload_committed","correlation":"reload","timeout_ms":20000}
 {"wait_state":"runtime_ready","timeout_ms":10000}
-{"wait_event":"dynview_published","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
 {"assert_state":"dynview_enabled"}
 {"assert_no_bad_frees":true}
 {"shutdown":true}

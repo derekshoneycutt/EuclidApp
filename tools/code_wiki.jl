@@ -287,9 +287,10 @@ function enrich_odin_child_packages!(
     return package
 end
 
-"""Capture `odin doc` output, recovering only from its intermittent pre-output crash."""
-function run_odin_doc(relative_path::String)
-    command = Cmd(["odin", "doc", relative_path, "-in-source-order"])
+"""Capture `odin doc` output from the repository root, retrying pre-output crashes."""
+function run_odin_doc(repository_root::String, relative_path::String)
+    command = Cmd(Cmd([
+        "odin", "doc", relative_path, "-in-source-order"]); dir=repository_root)
     for attempt in 1:3
         stdout = IOBuffer()
         stderr = IOBuffer()
@@ -312,7 +313,8 @@ function extract_odin_package(config::OdinWikiConfig, package_path::AbstractStri
     discovered_packages = discover_odin_packages(config)
     relative_path in discovered_packages ||
         error("Path is not a discovered Odin package: $relative_path")
-    package = parse_odin_doc(run_odin_doc(relative_path), relative_path)
+    package = parse_odin_doc(
+        run_odin_doc(config.repository_root, relative_path), relative_path)
     enrich_odin_source_metadata!(package, config.repository_root)
     return enrich_odin_child_packages!(package, discovered_packages)
 end

@@ -1,0 +1,19 @@
+{"wait_state":"runtime_ready","timeout_ms":10000}
+{"select_animation":"Scratchpad","as":"scratchpad"}
+{"wait_event":"animation_selected","correlation":"scratchpad","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"scratchpad","timeout_ms":10000}
+{"scratchpad":":clear","as":"clear"}
+{"wait_event":"scratchpad_completed","correlation":"clear","timeout_ms":10000}
+{"scratchpad":"L\"\"\"\\noindent {\\bfseries Bold {\\itshape italic}} \\textnormal{normal} \\% \\# \\_ \\& \\{ \\}~kept\\ space% hidden\n\\par\\begin{center}Centered JuliaMono prose.\\end{center}\\begin{flushright}Right aligned prose.\\end{flushright}\"\"\"","as":"supported"}
+{"wait_event":"scratchpad_completed","correlation":"supported","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
+{"screenshot":".build/phase8-familiar-prose.png"}
+{"wait_event":"capture_completed","timeout_ms":10000}
+{"scratchpad":"L\"\\textrm{Unavailable roman face}\"","as":"unsupported"}
+{"wait_event":"scratchpad_completed","correlation":"unsupported","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
+{"screenshot":".build/phase8-unavailable-face-fallback.png"}
+{"wait_event":"capture_completed","timeout_ms":10000}
+{"assert_state":"dynview_enabled"}
+{"assert_no_bad_frees":true}
+{"shutdown":true}

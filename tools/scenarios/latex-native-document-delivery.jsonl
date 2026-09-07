@@ -1,0 +1,55 @@
+{"wait_state":"runtime_ready","timeout_ms":10000}
+{"select_animation":"Proposition I","as":"proposition-warm-1"}
+{"wait_event":"animation_selected","correlation":"proposition-warm-1","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"proposition-warm-1","timeout_ms":10000}
+{"select_animation":"Axiom I,1","as":"axiom-warm"}
+{"wait_event":"animation_selected","correlation":"axiom-warm","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"axiom-warm","timeout_ms":10000}
+{"select_animation":"Proposition I","as":"proposition-warm-2"}
+{"wait_event":"animation_selected","correlation":"proposition-warm-2","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"proposition-warm-2","timeout_ms":10000}
+{"select_animation":"Axiom I,1","as":"axiom-warm-2"}
+{"wait_event":"animation_selected","correlation":"axiom-warm-2","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"axiom-warm-2","timeout_ms":10000}
+{"select_animation":"Isosceles Triangle","as":"isosceles-warm"}
+{"wait_event":"animation_selected","correlation":"isosceles-warm","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"isosceles-warm","timeout_ms":10000}
+{"select_animation":"Proposition I","as":"proposition-warm-3"}
+{"wait_event":"animation_selected","correlation":"proposition-warm-3","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"proposition-warm-3","timeout_ms":10000}
+{"allocation_checkpoint":"animation"}
+{"allocation_checkpoint":"snapshot_slots"}
+{"allocation_checkpoint":"display_cache"}
+{"do":"reload_runtime","as":"reload"}
+{"wait_event":"runtime_reload_committed","correlation":"reload","timeout_ms":30000}
+{"wait_state":"runtime_ready","timeout_ms":10000}
+{"select_animation":"Axiom I,1","as":"axiom-reloaded"}
+{"wait_event":"animation_selected","correlation":"axiom-reloaded","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"axiom-reloaded","timeout_ms":10000}
+{"select_animation":"Proposition I","as":"proposition-reloaded"}
+{"wait_event":"animation_selected","correlation":"proposition-reloaded","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"proposition-reloaded","timeout_ms":10000}
+{"select_animation":"Axiom I,1","as":"axiom-reloaded-2"}
+{"wait_event":"animation_selected","correlation":"axiom-reloaded-2","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"axiom-reloaded-2","timeout_ms":10000}
+{"select_animation":"Proposition I","as":"proposition-reloaded-2"}
+{"wait_event":"animation_selected","correlation":"proposition-reloaded-2","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"proposition-reloaded-2","timeout_ms":10000}
+{"select_animation":"Axiom I,1","as":"axiom-reloaded-3"}
+{"wait_event":"animation_selected","correlation":"axiom-reloaded-3","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"axiom-reloaded-3","timeout_ms":10000}
+{"select_animation":"Isosceles Triangle","as":"isosceles-reloaded"}
+{"wait_event":"animation_selected","correlation":"isosceles-reloaded","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"isosceles-reloaded","timeout_ms":10000}
+{"select_animation":"Proposition I","as":"proposition-reloaded-3"}
+{"wait_event":"animation_selected","correlation":"proposition-reloaded-3","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"proposition-reloaded-3","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
+{"screenshot":".build/phase10-native-document-delivery.png"}
+{"wait_event":"capture_completed","timeout_ms":10000}
+{"assert_allocation_baseline":"animation"}
+{"assert_allocation_baseline":"snapshot_slots"}
+{"assert_allocation_baseline":"display_cache"}
+{"assert_state":"dynview_enabled"}
+{"assert_no_bad_frees":true}
+{"shutdown":true}

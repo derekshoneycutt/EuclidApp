@@ -2573,6 +2573,184 @@ draw_cached_inline_item :: proc(
     }
 }
 
+// Resolve one semantic color against the standard Dynview foreground.
+document_draw_color :: #force_inline proc(color: core.Dynview_Document_Color) -> rl.Color {
+    return color.value if color.present else UI_TEXT_COLOR
+}
+
+// Convert one semantic shape into the established allocation-free draw payload.
+document_shape_draw_item :: proc(
+    item: core.Dynview_Document_Layout_Item,
+    shape: core.Dynview_Document_Shape,
+    cell_width: f32) -> (core.Dynview_Layout_Item, bool) {
+
+    geometry, geometry_ok := dynlayout.document_shape_geometry(shape, cell_width)
+    if !geometry_ok {
+        return {}, false
+    }
+    result := core.Dynview_Layout_Item{
+        draw_width = geometry.draw_width, draw_height = geometry.draw_height,
+        inline_atom_stroke = shape.thickness,
+        inline_outline_stroke = shape.thickness,
+        shape_is_filled = shape.filled,
+        pie_start_angle_degrees = shape.start_angle,
+        pie_end_angle_degrees = shape.end_angle,
+        pie_is_filled = shape.filled,
+        pie_center_offset_x = geometry.center_offset_x,
+        pie_center_offset_y = geometry.center_offset_y,
+        has_brush_color = shape.fill_color.present || shape.color.present,
+        brush_color = document_draw_color(
+            shape.fill_color if shape.fill_color.present else shape.color),
+        has_outline_color = shape.arc_color.present || shape.color.present,
+        outline_color = document_draw_color(
+            shape.arc_color if shape.arc_color.present else shape.color),
+    }
+    result.shape_edge_color_1 = document_draw_color(shape.edge_colors[0])
+    result.shape_edge_color_2 = document_draw_color(shape.edge_colors[1])
+    result.shape_edge_color_3 = document_draw_color(shape.edge_colors[2])
+    result.shape_edge_color_4 = document_draw_color(shape.edge_colors[3])
+    result.shape_edge_color_5 = document_draw_color(shape.edge_colors[4])
+    switch shape.kind {
+    case .Point:
+        result.kind = .Inline_Filled_Circle
+        result.inline_outline_stroke = 0
+    case .Line: result.kind = .Inline_Line
+    case .Circle:
+        result.kind = .Inline_Filled_Circle if shape.filled else .Inline_Circle
+    case .Box: result.kind = .Inline_Filled_Box if shape.filled else .Inline_Box
+    case .Angle, .Semicircle: result.kind = .Inline_Pie_Section
+    case .Perpendicular: result.kind = .Inline_Perpendicular
+    case .Triangle: result.kind = .Inline_Triangle
+    case .Pentagon: result.kind = .Inline_Pentagon
+    case .None: return {}, false
+    }
+    return result, true
+}
+
+// Draw one sealed semantic prose run through its exact resident font generation.
+draw_document_prose_item :: proc(
+    ctx: Layout_Draw_Context,
+    item: core.Dynview_Document_Layout_Item,
+    semantic_inline: core.Dynview_Document_Inline,
+    position: rl.Vector2) -> bool {
+
+    cache := &ctx.runtime^.compile_cache
+    if item.shaped_run_index < 0 ||
+        item.shaped_run_index >= len(cache^.document_shaped_runs) {
+        return false
+    }
+    run := cache^.document_shaped_runs[item.shaped_run_index]
+    if run.glyph_start < 0 || run.glyph_count <= 0 ||
+        run.glyph_count > len(cache^.document_shaped_glyphs)-run.glyph_start ||
+        !font.cache_generation_is_resident(
+            &ctx.state^.font_cache, run.effective_font_key, run.font_generation) {
+        return false
+    }
+    line_top := view_core.ui_text_cached_run_line_top(
+        position.y, run.ascent, run.raster_ascent,
+        ctx.font_size, run.base_pixel_size)
+    resolver := font.cache_terminal_resolver(&ctx.state^.font_cache)
+    return view_core.ui_text_cached_shaped_run({
+        resolver = resolver, key = run.effective_font_key,
+        glyphs = cache^.document_shaped_glyphs[
+            run.glyph_start:run.glyph_start+run.glyph_count],
+        position = {position.x, line_top},
+        color = document_draw_color(semantic_inline.color),
+        font_size = ctx.font_size, base_pixel_size = run.base_pixel_size,
+    })
+}
+
+// Draw one semantic layout item at its exact sealed document-space position.
+draw_document_item :: proc(
+    ctx: Layout_Draw_Context,
+    item: core.Dynview_Document_Layout_Item,
+    origin: rl.Vector2) {
+
+    content := &ctx.runtime^.content
+    if item.inline_index < 0 || item.inline_index >= len(content^.document_inlines) {
+        return
+    }
+    semantic_inline := content^.document_inlines[item.inline_index]
+    position := rl.Vector2{origin.x+item.x, origin.y+item.top}
+    switch item.box_kind {
+    case .Prose:
+        _ = draw_document_prose_item(ctx, item, semantic_inline, position)
+    case .Math:
+        if semantic_inline.math_program_id >= 0 && semantic_inline.math_program_id <
+            ctx.runtime^.compile_cache.math_program_count {
+            program := ctx.runtime^.compile_cache.math_programs[
+                semantic_inline.math_program_id]
+            draw_math_program_at(ctx, program, {
+                position.x, origin.y+item.baseline, 0,
+                {dynmath.Math_Style_Level(semantic_inline.root_style), false}, 0})
+        }
+    case .Shape:
+        shape_item, ok := document_shape_draw_item(
+            item, semantic_inline.shape, ctx.runtime^.compile_cache.last_cell_width)
+        if ok {
+            style := dyncore.style_by_id(dyncore.DYNVIEW_STYLE_DEFAULT)
+            style.color = document_draw_color(semantic_inline.color)
+            draw_cached_inline_item(style, shape_item, position.x, position.y)
+        }
+    case .None:
+    }
+}
+
+// Draw one parenthesized positive display number from fixed stack storage.
+draw_document_display_number :: proc(
+    ctx: Layout_Draw_Context,
+    line: core.Dynview_Document_Layout_Line,
+    origin: rl.Vector2) {
+
+    if line.display_number <= 0 {return}
+    digits: [20]rune
+    digit_count := 0
+    remaining := line.display_number
+    for remaining > 0 && digit_count < len(digits) {
+        digits[digit_count] = rune('0'+remaining%10)
+        digit_count += 1
+        remaining /= 10
+    }
+    style := dyncore.style_by_id(dyncore.DYNVIEW_STYLE_DEFAULT)
+    color := style.color
+    baseline := origin.y+line.baseline+line.display_number_baseline_offset
+    position := rl.Vector2{origin.x+line.display_number_x,
+        baseline-ctx.font_size*0.8}
+    rl.DrawTextCodepoint(ctx.font, '(', position, ctx.font_size, color)
+    position.x += ctx.runtime^.compile_cache.last_cell_width
+    for index := digit_count-1; index >= 0; index -= 1 {
+        rl.DrawTextCodepoint(ctx.font, digits[index], position, ctx.font_size, color)
+        position.x += ctx.runtime^.compile_cache.last_cell_width
+    }
+    rl.DrawTextCodepoint(ctx.font, ')', position, ctx.font_size, color)
+}
+
+// Draw authoritative semantic document lines from sealed pixel geometry.
+draw_document_layout :: proc(
+    ctx: Layout_Draw_Context,
+    scroll_y, text_padding: f32) {
+
+    cache := &ctx.runtime^.compile_cache
+    if !cache^.document_layout_is_valid {
+        return
+    }
+    origin := rl.Vector2{ctx.panel.x+text_padding, ctx.panel.y+text_padding-scroll_y}
+    panel_top := ctx.panel.y
+    panel_bottom := ctx.panel.y+ctx.panel.height
+    for line in cache^.document_layout_lines {
+        if layout_line_outside_panel(
+            origin.y+line.top, origin.y+line.bottom, panel_top, panel_bottom) {
+            continue
+        }
+        for item_index in line.item_start..<line.item_start+line.item_count {
+            if item_index >= 0 && item_index < len(cache^.document_layout_items) {
+                draw_document_item(ctx, cache^.document_layout_items[item_index], origin)
+            }
+        }
+        draw_document_display_number(ctx, line, origin)
+    }
+}
+
 //   Draw one cached layout line and all its items.
 draw_cached_line :: proc(
     ctx: Layout_Draw_Context,

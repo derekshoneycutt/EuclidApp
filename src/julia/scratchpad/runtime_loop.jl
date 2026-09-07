@@ -177,6 +177,10 @@ function get_view_text(
 
     session = ensure_session!(host_runtime, state_ptr)
     _ = emit_dynview_output_stream!(state_ptr, session)
+    document_entry = latest_latex_output(session)
+    if document_entry !== nothing && latex_output_is_document(document_entry)
+        return document_entry.line
+    end
     if isempty(session.output)
         return ""
     end

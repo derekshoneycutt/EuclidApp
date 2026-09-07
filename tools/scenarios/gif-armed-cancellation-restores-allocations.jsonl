@@ -2,6 +2,11 @@
 {"select_animation":"Point","as":"point"}
 {"wait_event":"animation_selected","correlation":"point","timeout_ms":10000}
 {"wait_event":"dynview_published","correlation":"point","timeout_ms":10000}
+{"start_gif":"warm-cancel-before-recording"}
+{"wait_event":"frame_presented","timeout_ms":10000}
+{"do":"stop_gif"}
+{"wait_state":"gif_idle","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
 {"allocation_checkpoint":"animation"}
 {"allocation_checkpoint":"snapshot_slots"}
 {"allocation_checkpoint":"display_cache"}

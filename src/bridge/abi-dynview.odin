@@ -1,7 +1,9 @@
 package bridge
 
 import "../core"
+import dynparse "../dynview/parse"
 
+import "base:runtime"
 import "core:log"
 import rl "vendor:raylib"
 
@@ -17,6 +19,20 @@ Dynview_Math_Import_Checkpoint :: struct {
     math_program_count: int,
     math_command_count: int,
     math_table_descriptor_count: int,
+    document_text_count: int,
+    document_count: int,
+    document_block_count: int,
+    document_inline_count: int,
+}
+
+//   Classify one TeX source using the native grammar authority.
+@(export)
+dynview_tex_source_mode :: proc "c" (source: cstring) -> i32 {
+    if source == nil {
+        return BRIDGE_STATUS_INVALID_ARGUMENT
+    }
+    context = runtime.default_context()
+    return i32(dynparse.tex_classify_source_mode(string(source)))
 }
 
 //   Lazily prepare the request-owned view candidate for structured emission.
@@ -377,6 +393,10 @@ dynview_math_import_checkpoint :: #force_inline proc(
         runtime^.compile_cache.math_program_count,
         runtime^.compile_cache.math_command_count,
         runtime^.compile_cache.math_table_descriptor_count,
+        runtime^.compile_cache.document_text_count,
+        runtime^.compile_cache.document_count,
+        runtime^.compile_cache.document_block_count,
+        runtime^.compile_cache.document_inline_count,
     }
 }
 
@@ -391,6 +411,10 @@ dynview_math_import_rollback :: #force_inline proc(
     runtime^.compile_cache.math_command_count = checkpoint.math_command_count
     runtime^.compile_cache.math_table_descriptor_count =
         checkpoint.math_table_descriptor_count
+    runtime^.compile_cache.document_text_count = checkpoint.document_text_count
+    runtime^.compile_cache.document_count = checkpoint.document_count
+    runtime^.compile_cache.document_block_count = checkpoint.document_block_count
+    runtime^.compile_cache.document_inline_count = checkpoint.document_inline_count
 }
 
 //   Resolve the runtime and command buffer for an inline atom emission.

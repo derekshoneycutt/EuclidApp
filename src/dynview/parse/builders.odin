@@ -61,6 +61,61 @@ tex_semantic_append_op :: proc(
     return index
 }
 
+//   Append one bounded semantic document block.
+tex_semantic_append_document_block :: proc(
+    output: ^Tex_Semantic_Output,
+    block: Tex_Document_Block) -> int {
+    if output == nil ||
+        output.document_block_count >= len(output.document_blocks) {
+        tex_semantic_fail(output, .Work_Limit, block.source.offset)
+        return -1
+    }
+    index := output.document_block_count
+    output.document_blocks[index] = block
+    output.document_block_count += 1
+    return index
+}
+
+//   Append one bounded inline and extend its owning block.
+tex_semantic_append_document_inline :: proc(
+    output: ^Tex_Semantic_Output,
+    block_index: int,
+    item: Tex_Document_Inline) -> bool {
+    if output == nil || block_index < 0 ||
+        block_index >= output.document_block_count ||
+        output.document_inline_count >= len(output.document_inlines) {
+        tex_semantic_fail(output, .Work_Limit, item.source.offset)
+        return false
+    }
+    block := &output.document_blocks[block_index]
+    if block.inline_start + block.inline_count != output.document_inline_count {
+        tex_semantic_fail(output, .Unexpected_Token, item.source.offset)
+        return false
+    }
+    output.document_inlines[output.document_inline_count] = item
+    output.document_inline_count += 1
+    block.inline_count += 1
+    block.source.length = item.source.offset + item.source.length -
+        block.source.offset
+    return true
+}
+
+// Append one bounded technical-display row and return its stable semantic index.
+tex_semantic_append_document_display_row :: proc(
+    output: ^Tex_Semantic_Output,
+    row: Tex_Document_Display_Row) -> int {
+
+    if output == nil ||
+        output.document_display_row_count >= len(output.document_display_rows) {
+        tex_semantic_fail(output, .Work_Limit, row.source.offset)
+        return -1
+    }
+    index := output.document_display_row_count
+    output.document_display_rows[index] = row
+    output.document_display_row_count += 1
+    return index
+}
+
 //   Append two semantic spans as one newly owned span.
 tex_semantic_join_text :: proc(
     output: ^Tex_Semantic_Output,

@@ -6,6 +6,13 @@ import "../core"
 import dyncore "../dynview/core"
 import dyncompile "../dynview/compile"
 
+//   Verify the C ABI classifier preserves native document-mode decisions.
+@(test)
+dynview_tex_source_mode_classifies_scratchpad_document :: proc(t: ^testing.T) {
+    testing.expect_value(t, dynview_tex_source_mode(
+        "\\textbf{Definition}\\newline A point has no part."), i32(1))
+}
+
 //   Verify raw math is interned once and copied independently into snapshot staging.
 @(test)
 dynview_native_math_source_survives_animation_reset :: proc(t: ^testing.T) {
@@ -74,6 +81,113 @@ dynview_native_document_replays_mixed_runs :: proc(t: ^testing.T) {
     testing.expect_value(t, state.dynview.command_buffer.commands[count-1].kind,
         core.Dynview_Command_Kind.End_Block)
     testing.expect(t, state.dynview.compile_cache.math_program_count > 0)
+    testing.expect_value(t, state.dynview.compile_cache.document_count, 1)
+    testing.expect_value(t, state.dynview.compile_cache.document_block_count, 2)
+    testing.expect(t, state.dynview.compile_cache.document_inline_count > 0)
+}
+
+//   Verify document import publishes semantics without legacy render commands.
+@(test)
+dynview_native_document_publishes_authoritative_semantics :: proc(t: ^testing.T) {
+    state := animation_value_test_state_create(42)
+    testing.expect(t, state != nil)
+    defer animation_value_test_state_destroy(state)
+    state.saved_context = context
+    state.dynview.enabled = true
+    source := "First line with tall inline math $\\dfrac{a}{b}$ and a shape\n" +
+        "\\euclidcircle[color=steelblue,size=2].\n" +
+        "Second source line, same paragraph.\n\n" +
+        "Second paragraph before a display.\n" +
+        "\\[\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\\]\n" +
+        "Final paragraph."
+    status := dynview_tex_document(state, {
+        source = cstring(raw_data(source)),
+        fallback = "composition fallback",
+        block_kind = BRIDGE_DYNVIEW_BLOCK_OUTPUT,
+        block_id = 17,
+        text_style = BRIDGE_DYNVIEW_STYLE_OUTPUT,
+    })
+
+    testing.expect_value(t, status, i32(BRIDGE_STATUS_OK))
+    testing.expect_value(t, state.dynview.command_buffer.command_count, 3)
+    expected_kinds := [?]core.Dynview_Command_Kind{
+        .Begin_Block, .Copyable_Text_Run, .End_Block,
+    }
+    for command, index in state.dynview.command_buffer.commands[
+        :state.dynview.command_buffer.command_count] {
+        testing.expect_value(t, command.kind, expected_kinds[index])
+    }
+    cache := &state.dynview.compile_cache
+    testing.expect_value(t, cache^.document_count, 1)
+    testing.expect_value(t, cache^.document_block_count, 4)
+    testing.expect(t, cache^.document_inline_count > 0)
+    testing.expect_value(t, cache^.math_program_count, 11)
+}
+
+// Verify group animation documents survive bridge import without fallback staging.
+@(test)
+dynview_native_group_documents_publish_semantics :: proc(t: ^testing.T) {
+    inverse := "\\textbf{Inverse}\n\nAn inverse is the motion that undoes a given " +
+        "motion. In $\\mathbb{Z}_2$, every element is its own inverse. That means " +
+        "each motion undoes itself when applied again. This is common for reflections " +
+        "across a stable line.\n\nFor an element $a$ in a group, an inverse $a^{-1}$ " +
+        "is an element such that\n$a \\circ a^{-1} = a^{-1} \\circ a = e$, where " +
+        "$e$ is the identity.\n\n1. $e^{-1} = e$: doing nothing undoes itself.\\\\\n" +
+        "2. $r^{-1} = r$: one reflection undoes itself because reflecting twice " +
+        "gives back the original figure."
+    associative := "\\textbf{Associativity}\n\nAssociativity means the grouping " +
+        "of the operation does not matter:\n\n$$(a \\circ b) \\circ c = a \\circ " +
+        "(b \\circ c)\\; \\text{for all}\\; a,b,c$$\n\nHere, compare the two " +
+        "ways of grouping the same three rotations.\n\n\\textbf{1.} Left grouping: " +
+        "$(\\rho^1\\rho^2)\\rho^3 = \\rho^6$.\\\\\n\\textbf{2.} Right grouping: " +
+        "$\\rho^1(\\rho^2\\rho^3) = \\rho^6$."
+    sources := [?]string{inverse, associative}
+    for source, index in sources {
+        state := animation_value_test_state_create(u64(70+index))
+        testing.expect(t, state != nil)
+        state.saved_context = context
+        state.dynview.enabled = true
+
+        status := dynview_tex_document(state, {
+            source = cstring(raw_data(source)), fallback = "fallback",
+            block_kind = BRIDGE_DYNVIEW_BLOCK_OUTPUT, block_id = 1,
+            text_style = BRIDGE_DYNVIEW_STYLE_OUTPUT,
+        })
+
+        testing.expect_value(t, status, i32(BRIDGE_STATUS_OK))
+        testing.expect_value(t, state.dynview.compile_cache.document_count, 1)
+        animation_value_test_state_destroy(state)
+    }
+}
+
+// Verify technical display rows receive stable document-local equation numbers.
+@(test)
+dynview_native_document_numbers_technical_display_rows :: proc(t: ^testing.T) {
+    state := animation_value_test_state_create(44)
+    testing.expect(t, state != nil)
+    defer animation_value_test_state_destroy(state)
+    state.saved_context = context
+    state.dynview.enabled = true
+    source := "\\begin{equation}x=1\\end{equation}" +
+        "\\begin{align}a&=b\\\\c&=d\\notag\\end{align}" +
+        "\\begin{gather*}u=1\\\\v=2\\end{gather*}" +
+        "\\begin{multline}p\\\\q\\end{multline}"
+
+    status := dynview_tex_document(state, {
+        source = cstring(raw_data(source)), fallback = "fallback",
+        block_kind = BRIDGE_DYNVIEW_BLOCK_OUTPUT, block_id = 18,
+        text_style = BRIDGE_DYNVIEW_STYLE_OUTPUT,
+    })
+    cache := &state.dynview.compile_cache
+
+    testing.expect_value(t, status, i32(BRIDGE_STATUS_OK))
+    testing.expect_value(t, cache^.document_display_row_count, 7)
+    expected := [?]int{1, 2, 0, 0, 0, 0, 3}
+    for row, index in cache^.document_display_rows[
+        :cache^.document_display_row_count] {
+        testing.expect_value(t, row.number, expected[index])
+        testing.expect(t, row.primary_program_id >= 0)
+    }
 }
 
 //   Verify rejected document semantics roll back while retaining a closable fallback.
@@ -102,6 +216,33 @@ dynview_native_document_failure_preserves_fallback :: proc(t: ^testing.T) {
     testing.expect_value(t, state.dynview.command_buffer.commands[2].kind,
         core.Dynview_Command_Kind.Text_Run)
     testing.expect_value(t, state.dynview.compile_cache.math_program_count, 0)
+    testing.expect_value(t, state.dynview.compile_cache.document_text_count, 0)
+    testing.expect_value(t, state.dynview.compile_cache.document_count, 0)
+    testing.expect_value(t, state.dynview.compile_cache.document_block_count, 0)
+    testing.expect_value(t, state.dynview.compile_cache.document_inline_count, 0)
+}
+
+//   Verify copied semantic aliases remain valid and install directly after reset.
+dynview_native_expect_snapshot_semantics :: proc(
+    t: ^testing.T,
+    slot: ^View_Snapshot,
+    runtime: ^core.Dynview_System,
+    document: core.Dynview_Document,
+    copied_source: string) {
+
+    testing.expect_value(t, string(slot.document_text[
+        document.source_offset:document.source_offset + document.source_count]),
+        copied_source)
+    testing.expect(t, len(slot.document_blocks) > 0)
+    testing.expect(t, len(slot.document_inlines) > 0)
+    testing.expect(t, view_snapshot_is_valid(slot))
+    install_view_snapshot_content(slot, runtime)
+    testing.expect_value(t,
+        raw_data(runtime.content.documents), raw_data(slot.documents))
+    testing.expect_value(t,
+        raw_data(runtime.content.document_blocks), raw_data(slot.document_blocks))
+    testing.expect_value(t,
+        raw_data(runtime.content.document_inlines), raw_data(slot.document_inlines))
 }
 
 //   Verify a sealed native document snapshot remains valid after animation reset.
@@ -128,6 +269,11 @@ dynview_native_document_snapshot_survives_animation_reset :: proc(t: ^testing.T)
     testing.expect(t, view_snapshot_is_valid(slot))
     command_text := string(slot.command_text)
     command_count := len(slot.commands)
+    testing.expect_value(t, len(slot.documents), 1)
+    document := slot.documents[0]
+    copied_source := string(slot.document_text[
+        document.source_offset:document.source_offset + document.source_count])
+    testing.expect_value(t, copied_source, "text $x^2$")
 
     core.dynview_document_store_clear_generation(&state.dynview_documents)
     testing.expect_value(t, core.animation_memory_begin_generation(
@@ -137,7 +283,8 @@ dynview_native_document_snapshot_survives_animation_reset :: proc(t: ^testing.T)
 
     testing.expect_value(t, string(slot.command_text), command_text)
     testing.expect_value(t, len(slot.commands), command_count)
-    testing.expect(t, view_snapshot_is_valid(slot))
+    dynview_native_expect_snapshot_semantics(
+        t, slot, &state.dynview, document, copied_source)
 }
 
 //   Verify the document facade classifies and strips complete inline math natively.
@@ -379,7 +526,7 @@ dynview_native_circle_document_compiles :: proc(t: ^testing.T) {
     defer animation_value_test_state_destroy(state)
     state.saved_context = context
     state.dynview.enabled = true
-    source := "\\textbf{Euclid Elements - Book I - Definition}: " +
+    source := "\\textbf{Euclid Elements - Book I - Definition}\\newline " +
         "\\textit{Circle and Center}\n\nA circle " +
         "\\euclidcircle[color=steelblue,size=1,thickness=2] is a plane figure " +
         "contained by one line from one point " +

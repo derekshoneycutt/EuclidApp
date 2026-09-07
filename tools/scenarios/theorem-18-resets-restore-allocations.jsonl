@@ -4,16 +4,34 @@
 {"wait_event":"dynview_published","correlation":"theorem18","timeout_ms":10000}
 {"do":"reset_animation"}
 {"wait_event":"animation_cycle_boundary","timeout_ms":10000}
-{"wait_event":"dynview_published","timeout_ms":10000}
+{"wait_event":"scene_batch_committed","timeout_ms":10000}
+{"select_animation":"Axiom I,1","as":"axiom-warm-1"}
+{"wait_event":"animation_selected","correlation":"axiom-warm-1","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"axiom-warm-1","timeout_ms":10000}
+{"select_animation":"Theorem 18","as":"theorem18-warm-1"}
+{"wait_event":"animation_selected","correlation":"theorem18-warm-1","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"theorem18-warm-1","timeout_ms":10000}
 {"do":"reset_animation"}
 {"wait_event":"animation_cycle_boundary","timeout_ms":10000}
-{"wait_event":"dynview_published","timeout_ms":10000}
+{"wait_event":"scene_batch_committed","timeout_ms":10000}
+{"select_animation":"Axiom I,1","as":"axiom-warm-2"}
+{"wait_event":"animation_selected","correlation":"axiom-warm-2","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"axiom-warm-2","timeout_ms":10000}
+{"select_animation":"Theorem 18","as":"theorem18-warm-2"}
+{"wait_event":"animation_selected","correlation":"theorem18-warm-2","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"theorem18-warm-2","timeout_ms":10000}
 {"allocation_checkpoint":"animation"}
 {"allocation_checkpoint":"snapshot_slots"}
 {"allocation_checkpoint":"display_cache"}
 {"do":"reset_animation"}
 {"wait_event":"animation_cycle_boundary","timeout_ms":10000}
-{"wait_event":"dynview_published","timeout_ms":10000}
+{"wait_event":"scene_batch_committed","timeout_ms":10000}
+{"select_animation":"Axiom I,1","as":"axiom-measured"}
+{"wait_event":"animation_selected","correlation":"axiom-measured","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"axiom-measured","timeout_ms":10000}
+{"select_animation":"Theorem 18","as":"theorem18-measured"}
+{"wait_event":"animation_selected","correlation":"theorem18-measured","timeout_ms":10000}
+{"wait_event":"dynview_published","correlation":"theorem18-measured","timeout_ms":10000}
 {"wait_event":"frame_presented","timeout_ms":10000}
 {"assert_allocation_baseline":"animation"}
 {"assert_allocation_baseline":"snapshot_slots"}

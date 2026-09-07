@@ -16,6 +16,7 @@ import evidence_trace "../evidence/trace"
 import "base:runtime"
 import "core:encoding/uuid"
 import "core:math"
+import "core:mem"
 import rand "core:math/rand"
 import vmem "core:mem/virtual"
 import "core:sync/chan"
@@ -51,6 +52,21 @@ DYNVIEW_MAX_MATH_TABLE_DESCRIPTORS :: DYNVIEW_MAX_MATH_PROGRAMS
 DYNVIEW_MAX_MATH_NODES :: 4096
 DYNVIEW_MAX_MATH_COMMANDS :: 4096
 DYNVIEW_MAX_SHAPED_RUNS :: DYNVIEW_MAX_MATH_COMMANDS
+DYNVIEW_MAX_DOCUMENTS :: 256
+DYNVIEW_MAX_DOCUMENT_BLOCKS :: 256
+DYNVIEW_MAX_DOCUMENT_INLINES :: 2048
+DYNVIEW_MAX_DOCUMENT_DISPLAY_ROWS :: 512
+DYNVIEW_MAX_DOCUMENT_BYTES :: 128 * 1024
+DYNVIEW_MAX_DOCUMENT_SHAPED_RUNS :: DYNVIEW_MAX_DOCUMENT_INLINES
+DYNVIEW_MAX_DOCUMENT_SHAPED_GLYPHS :: DYNVIEW_MAX_DOCUMENT_BYTES
+DYNVIEW_MAX_DOCUMENT_LAYOUT_NODES :: DYNVIEW_MAX_DOCUMENT_INLINES
+DYNVIEW_MAX_DOCUMENT_LAYOUT_LINES :: DYNVIEW_MAX_LAYOUT_LINES
+DYNVIEW_MAX_DOCUMENT_LAYOUT_ITEMS :: DYNVIEW_MAX_LAYOUT_ITEMS
+DYNVIEW_MAX_DOCUMENT_BREAK_CANDIDATES :: DYNVIEW_MAX_DOCUMENT_LAYOUT_NODES + 1
+DYNVIEW_MAX_DOCUMENT_BREAK_STATES :: DYNVIEW_MAX_DOCUMENT_BREAK_CANDIDATES * 4
+DYNVIEW_MAX_DOCUMENT_BREAK_WORK :: 1024 * 1024
+DYNVIEW_MAX_DOCUMENT_LAYOUT_COPY_TARGETS ::
+    DYNVIEW_MAX_DOCUMENT_SHAPED_GLYPHS + DYNVIEW_MAX_DOCUMENT_INLINES
 
 FONT_KEY_COUNT :: int(Font_Key.Math_Regular) + 1
 FONT_SOURCE_PATH_CAPACITY :: 1024
@@ -67,6 +83,7 @@ SCRATCHPAD_ASYNC_SLOT_COUNT :: 16
 SCRATCHPAD_ASYNC_TEXT_CAPACITY :: 4096
 VIEW_SNAPSHOT_SLOT_COUNT :: 2
 VIEW_SNAPSHOT_TEXT_CAPACITY :: DYNVIEW_MAX_TEXT_BYTES
+VIEW_SNAPSHOT_ARENA_RESERVATION :: uint(2 * mem.Megabyte)
 ANIMATION_TICK_SLOT_COUNT :: 2
 
 SCENE_COMMAND_BATCH_CAPACITY :: 64
@@ -305,6 +322,12 @@ View_Snapshot :: struct {
     math_table_descriptor_builder: Bounded_Element_Builder(Dynview_Math_Table_Descriptor),
     math_command_builder: Bounded_Element_Builder(Dynview_Command),
     math_node_builder: Bounded_Element_Builder(Dynview_Math_Node),
+    document_text_builder: Bounded_Byte_Builder,
+    document_builder: Bounded_Element_Builder(Dynview_Document),
+    document_block_builder: Bounded_Element_Builder(Dynview_Document_Block),
+    document_inline_builder: Bounded_Element_Builder(Dynview_Document_Inline),
+    document_display_row_builder:
+        Bounded_Element_Builder(Dynview_Document_Display_Row),
 
     fallback_text: []u8,
     command_text: []u8,
@@ -317,6 +340,11 @@ View_Snapshot :: struct {
     math_table_descriptors: []Dynview_Math_Table_Descriptor,
     math_commands: []Dynview_Command,
     math_nodes: []Dynview_Math_Node,
+    document_text: []u8,
+    documents: []Dynview_Document,
+    document_blocks: []Dynview_Document_Block,
+    document_inlines: []Dynview_Document_Inline,
+    document_display_rows: []Dynview_Document_Display_Row,
 }
 
 Scratchpad_Async_Kind :: enum {
@@ -1361,6 +1389,262 @@ Dynview_Command_Buffer :: struct {
     text_bytes: [DYNVIEW_MAX_TEXT_BYTES]u8,
 }
 
+// Identify one font-independent block copied into a semantic snapshot.
+Dynview_Document_Block_Kind :: enum u8 {
+    Paragraph,
+    Display,
+}
+
+// Identify one semantic item copied into a document block.
+Dynview_Document_Inline_Kind :: enum u8 {
+    Text,
+    Space,
+    Math,
+    Shape,
+    Penalty,
+    Forced_Break,
+}
+
+// Distinguish spacing behavior before physical measurement.
+Dynview_Document_Space_Kind :: enum u8 {
+    Breakable,
+    Nonbreaking,
+    Controlled,
+}
+
+// Identify block alignment independently from physical placement.
+Dynview_Document_Alignment :: enum u8 {
+    Left,
+    Center,
+    Right,
+}
+
+// Identify supported inline Euclid shape semantics in snapshot storage.
+Dynview_Document_Shape_Kind :: enum u8 {
+    None,
+    Point,
+    Line,
+    Circle,
+    Box,
+    Angle,
+    Semicircle,
+    Perpendicular,
+    Triangle,
+    Pentagon,
+}
+
+// Retain one optional semantic color without parser-owned storage.
+Dynview_Document_Color :: struct {
+    present: bool,
+    value: rl.Color,
+}
+
+// Retain one font-independent inline Euclid shape payload.
+Dynview_Document_Shape :: struct {
+    present: bool,
+    kind: Dynview_Document_Shape_Kind,
+    color: Dynview_Document_Color,
+    width: f32,
+    height: f32,
+    thickness: f32,
+    filled: bool,
+    start_angle: f32,
+    end_angle: f32,
+    fill_color: Dynview_Document_Color,
+    arc_color: Dynview_Document_Color,
+    edge_colors: [5]Dynview_Document_Color,
+}
+
+// Retain one contiguous semantic document inside snapshot-owned storage.
+Dynview_Document :: struct {
+    source_offset: int,
+    source_count: int,
+    text_offset: int,
+    text_count: int,
+    block_start: int,
+    block_count: int,
+    inline_start: int,
+    inline_count: int,
+    display_row_start: int,
+    display_row_count: int,
+}
+
+// Identify the document-level policy for one technical display environment.
+Dynview_Document_Display_Kind :: enum {
+    Plain,
+    Equation,
+    Align,
+    Gather,
+    Multline,
+}
+
+// Retain one pointer-free semantic block with staging-relative child offsets.
+Dynview_Document_Block :: struct {
+    kind: Dynview_Document_Block_Kind,
+    inline_start: int,
+    inline_count: int,
+    source_offset: int,
+    source_count: int,
+    alignment: Dynview_Document_Alignment,
+    no_indent: bool,
+    display_kind: Dynview_Document_Display_Kind,
+    display_row_start: int,
+    display_row_count: int,
+    display_numbered: bool,
+}
+
+// Retain one pointer-free technical display row with resolved math program IDs.
+Dynview_Document_Display_Row :: struct {
+    source_offset: int,
+    source_count: int,
+    primary_program_id: int,
+    secondary_program_id: int,
+    alignment: Dynview_Document_Alignment,
+    suppress_number: bool,
+    number: int,
+}
+
+// Retain one pointer-free inline item with staging-relative byte and program offsets.
+Dynview_Document_Inline :: struct {
+    kind: Dynview_Document_Inline_Kind,
+    source_offset: int,
+    source_count: int,
+    text_offset: int,
+    text_count: int,
+    font_flags: i32,
+    color: Dynview_Document_Color,
+    space_kind: Dynview_Document_Space_Kind,
+    shape: Dynview_Document_Shape,
+    root_style: Dynview_Math_Style_Level,
+    math_program_id: int,
+    penalty: i32,
+}
+
+// Retain one generation-specific JuliaMono measurement for a semantic prose inline.
+Dynview_Document_Shaped_Run :: struct {
+    inline_index: int,
+    text_offset: int,
+    text_count: int,
+    glyph_start: int,
+    glyph_count: int,
+    requested_font_key: Font_Key,
+    effective_font_key: Font_Key,
+    font_generation: u64,
+    base_pixel_size: f32,
+    raster_ascent: f32,
+    width: f32,
+    ascent: f32,
+    descent: f32,
+}
+
+Dynview_Document_Layout_Node_Kind :: enum u8 {
+    Box,
+    Glue,
+    Penalty,
+    Forced_Break,
+}
+
+Dynview_Document_Box_Kind :: enum u8 {
+    None,
+    Prose,
+    Math,
+    Shape,
+}
+
+// Retain one measured semantic inline before paragraph breaking.
+Dynview_Document_Layout_Node :: struct {
+    kind: Dynview_Document_Layout_Node_Kind,
+    box_kind: Dynview_Document_Box_Kind,
+    inline_index: int,
+    shaped_run_index: int,
+    source_offset: int,
+    source_count: int,
+    text_offset: int,
+    text_count: int,
+    width: f32,
+    ascent: f32,
+    descent: f32,
+    stretch: f32,
+    shrink: f32,
+    penalty: i32,
+    break_allowed: bool,
+}
+
+// Retain one positioned semantic inline in pixel-native paragraph space.
+Dynview_Document_Layout_Item :: struct {
+    box_kind: Dynview_Document_Box_Kind,
+    inline_index: int,
+    shaped_run_index: int,
+    line_index: int,
+    source_offset: int,
+    source_count: int,
+    text_offset: int,
+    text_count: int,
+    x: f32,
+    top: f32,
+    baseline: f32,
+    width: f32,
+    ascent: f32,
+    descent: f32,
+}
+
+// Retain one measured paragraph line and its contiguous item range.
+Dynview_Document_Layout_Line :: struct {
+    node_start: int,
+    node_count: int,
+    item_start: int,
+    item_count: int,
+    block_index: int,
+    x: f32,
+    top: f32,
+    baseline: f32,
+    bottom: f32,
+    natural_width: f32,
+    width: f32,
+    adjustment_ratio: f32,
+    ascent: f32,
+    descent: f32,
+    overfull: bool,
+    display_row_index: int,
+    display_number: int,
+    display_number_x: f32,
+    display_number_width: f32,
+    display_number_baseline_offset: f32,
+    display_content_width: f32,
+}
+
+// Retain one semantic block's contiguous measured line range.
+Dynview_Document_Layout_Block :: struct {
+    source_block_index: int,
+    node_start: int,
+    node_count: int,
+    line_start: int,
+    line_count: int,
+    top: f32,
+    bottom: f32,
+    height: f32,
+    spacing_before: f32,
+    reserved_top: f32,
+    reserved_bottom: f32,
+    trailing_padding: f32,
+    row_start: int,
+    row_count: int,
+    width: f32,
+}
+
+// Retain one source span's horizontal geometry in a measured semantic line.
+Dynview_Document_Layout_Copy_Target :: struct {
+    line_index: int,
+    item_index: int,
+    offset: int,
+    count: int,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    canonical_text: bool,
+}
+
 Dynview_Compile_Cache :: struct {
     compiled_revision: u64,
     compiled_command_count: int,
@@ -1389,6 +1673,8 @@ Dynview_Compile_Cache :: struct {
     last_cell_width: f32,
     last_cell_height: f32,
     last_style_revision: u64,
+    last_prose_effective_keys: [int(Font_Key.Math_Regular)]Font_Key,
+    last_prose_font_generations: [int(Font_Key.Math_Regular)]u64,
 
     last_invalidation_mask: u32,
     last_error_code: i32,
@@ -1401,6 +1687,19 @@ Dynview_Compile_Cache :: struct {
     math_constants: Font_Math_Constants,
     math_operator_variants: [DYNVIEW_MAX_MATH_COMMANDS]Font_Math_Glyph_Variants,
     math_stretch_sources: [DYNVIEW_MAX_MATH_COMMANDS][2]Font_Math_Stretch_Source,
+
+    document_shaped_runs: []Dynview_Document_Shaped_Run,
+    document_shaped_glyphs: []Shaped_Glyph,
+    document_layout_nodes: []Dynview_Document_Layout_Node,
+    document_layout_blocks: []Dynview_Document_Layout_Block,
+    document_layout_lines: []Dynview_Document_Layout_Line,
+    document_layout_items: []Dynview_Document_Layout_Item,
+    document_layout_copy_targets: []Dynview_Document_Layout_Copy_Target,
+    document_layout_total_height: f32,
+    document_layout_is_valid: bool,
+    document_layout_used_greedy_fallback: bool,
+    document_layout_break_fallback_code: i32,
+    document_layout_overfull_line_count: int,
 
     compiled_plain_text: []u8,
     compiled_copy_payload: []u8,
@@ -1416,6 +1715,17 @@ Dynview_Compile_Cache :: struct {
         [DYNVIEW_MAX_MATH_TABLE_DESCRIPTORS]Dynview_Math_Table_Descriptor,
     math_commands: [DYNVIEW_MAX_MATH_COMMANDS]Dynview_Command,
     math_nodes: [DYNVIEW_MAX_MATH_NODES]Dynview_Math_Node,
+    document_text_count: int,
+    document_count: int,
+    document_block_count: int,
+    document_inline_count: int,
+    document_display_row_count: int,
+    document_text: [DYNVIEW_MAX_DOCUMENT_BYTES]u8,
+    documents: [DYNVIEW_MAX_DOCUMENTS]Dynview_Document,
+    document_blocks: [DYNVIEW_MAX_DOCUMENT_BLOCKS]Dynview_Document_Block,
+    document_inlines: [DYNVIEW_MAX_DOCUMENT_INLINES]Dynview_Document_Inline,
+    document_display_rows:
+        [DYNVIEW_MAX_DOCUMENT_DISPLAY_ROWS]Dynview_Document_Display_Row,
 }
 
 Dynview_Cache_Access_State :: enum {
@@ -1435,6 +1745,11 @@ Dynview_Content_View :: struct {
     math_table_descriptors: []Dynview_Math_Table_Descriptor,
     math_commands: []Dynview_Command,
     math_nodes: []Dynview_Math_Node,
+    document_text: []u8,
+    documents: []Dynview_Document,
+    document_blocks: []Dynview_Document_Block,
+    document_inlines: []Dynview_Document_Inline,
+    document_display_rows: []Dynview_Document_Display_Row,
 }
 
 Dynview_System :: struct {
@@ -1726,6 +2041,13 @@ Font_Math_Shaping_Capability :: struct {
     constants: Font_Math_Constants,
     generation: u64,
     failed_generation: u64,
+    raster_ascent: f32,
+}
+
+// Identify one exact resident font generation used by shaping clients.
+Font_Shaping_Identity :: struct {
+    key: Font_Key,
+    generation: u64,
     raster_ascent: f32,
 }
 
@@ -2047,11 +2369,16 @@ Math_Shaping_Workspace :: struct {
     glyphs: [FONT_SHAPED_GLYPH_CAPACITY]Shaped_Glyph,
 }
 
+Document_Prose_Shaping_Workspace :: struct {
+    glyphs: [DYNVIEW_MAX_DOCUMENT_SHAPED_GLYPHS]Shaped_Glyph,
+}
+
 Frame_Preparation_Task_Data :: struct {
     state: ^Euclid_General_State,
     interpolation_alpha: f32,
     evidence_ring: evidence_trace.Ring,
     math_shaping_workspace: ^Math_Shaping_Workspace,
+    prose_shaping_workspace: ^Document_Prose_Shaping_Workspace,
 }
 
 Simulation_Executor :: struct {
@@ -2061,6 +2388,7 @@ Simulation_Executor :: struct {
     shape_cache_task: Frame_Preparation_Task_Data,
     dynview_task: Frame_Preparation_Task_Data,
     math_shaping_workspace: Math_Shaping_Workspace,
+    prose_shaping_workspace: ^Document_Prose_Shaping_Workspace,
 }
 
 

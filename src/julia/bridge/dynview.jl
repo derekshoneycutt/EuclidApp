@@ -1,3 +1,14 @@
+const DYNVIEW_TEX_MODE_MATH = Int32(0)
+const DYNVIEW_TEX_MODE_DOCUMENT = Int32(1)
+
+"""Classify one TeX source through the native grammar authority."""
+function dynview_tex_source_mode(latex_source::AbstractString)
+    source_text = String(latex_source)
+    GC.@preserve source_text begin
+        return @ccall dynview_tex_source_mode(pointer(source_text)::Cstring)::Int32
+    end
+end
+
 """Begin building the request-owned view candidate and return its bridge status."""
 function begin_view_update(state_ptr::Ptr{Cvoid})
     @ccall begin_view_update(state_ptr::Ptr{Cvoid})::Int32

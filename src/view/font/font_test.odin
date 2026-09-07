@@ -1110,6 +1110,40 @@ view_test_harfbuzz_owns_source_and_bounds_output :: proc(t: ^testing.T) {
     testing.expect(t, shaping.buffer == nil)
 }
 
+// Verify prose shaping and metrics reject stale resident-generation identities.
+@(test)
+view_test_prose_shaping_requires_exact_generation :: proc(t: ^testing.T) {
+    source, read_error := os.read_entire_file(
+        "assets/JuliaMono-Regular.ttf", context.temp_allocator)
+    testing.expect(t, read_error == nil)
+    cache: Font_Cache
+    entry := &cache.entries[int(Font_Key.Regular)]
+    entry^.resident = true
+    entry^.generation = 7
+    testing.expect(t, harfbuzz_shaper_init(
+        source, JULIA_MONO_FONT_SIZE, &entry^.shaping))
+    defer harfbuzz_shaper_destroy(&entry^.shaping)
+    glyphs: [8]Shaped_Glyph
+
+    stale_count, stale_ok := cache_shape_generation(
+        &cache, .Regular, 6, "space ", glyphs[:])
+    glyph_count, shaped := cache_shape_generation(
+        &cache, .Regular, 7, "space ", glyphs[:])
+    _, stale_extents := cache_glyph_extents_generation(
+        &cache, .Regular, 6, glyphs[0].glyph_id)
+    _, extents_ok := cache_glyph_extents_generation(
+        &cache, .Regular, 7, glyphs[0].glyph_id)
+    _, space_extents_ok := cache_glyph_extents_generation(
+        &cache, .Regular, 7, glyphs[glyph_count-1].glyph_id)
+
+    testing.expect(t, !stale_ok)
+    testing.expect_value(t, stale_count, 0)
+    testing.expect(t, shaped && glyph_count > 0)
+    testing.expect(t, !stale_extents)
+    testing.expect(t, extents_ok)
+    testing.expect(t, space_extents_ok)
+}
+
 // Verify the cache reuses committed preparation pages until explicit destruction.
 @(test)
 view_test_preparation_arena_reuses_committed_pages :: proc(t: ^testing.T) {

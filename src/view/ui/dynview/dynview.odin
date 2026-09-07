@@ -3,6 +3,7 @@ package ui_dynview
 import "../../../core"
 import dynmath "../../../dynview/math"
 import dyncore "../../../dynview/core"
+import dynlayout "../../../dynview/layout"
 import view_core "../../core"
 import view_font "../../font"
 
@@ -82,8 +83,21 @@ draw_scratchpad_styled_or_fallback :: proc(
     runtime := &state^.dynview
     if runtime^.enabled && runtime^.cache_access_state == .Display_Readable &&
         runtime^.compile_cache.is_valid &&
-        !runtime^.command_buffer.has_stream_error &&
-        runtime^.command_buffer.command_count > 0 {
+        !runtime^.command_buffer.has_stream_error {
+        if dynlayout.document_layout_is_authoritative(runtime) {
+            draw_document_layout(Layout_Draw_Context{
+                state = state,
+                runtime = runtime,
+                panel = params.panel,
+                font = params.font,
+                font_size = params.metrics.font_size,
+            }, params.scroll_y, params.metrics.padding)
+            return
+        }
+        if runtime^.command_buffer.command_count <= 0 {
+            draw_scratchpad_fallback_text(fallback, params)
+            return
+        }
         if runtime^.compile_cache.layout_is_valid {
             draw_cached_layout(Layout_Draw_Context{
                 state = state,

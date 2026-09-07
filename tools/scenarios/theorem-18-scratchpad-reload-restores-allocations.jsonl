@@ -5,7 +5,7 @@
 {"do":"reset_animation"}
 {"wait_event":"animation_cycle_boundary","timeout_ms":10000}
 {"wait_event":"scene_batch_committed","timeout_ms":10000}
-{"wait_event":"dynview_published","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
 {"select_animation":"Scratchpad","as":"scratchpad"}
 {"wait_event":"animation_selected","correlation":"scratchpad","timeout_ms":10000}
 {"wait_event":"dynview_published","correlation":"scratchpad","timeout_ms":10000}
@@ -22,9 +22,7 @@
 {"wait_event":"scratchpad_completed","correlation":"reset-warm-2","timeout_ms":10000}
 {"scratchpad":"L\"\\frac{x^2}{\\sqrt{y}} \\left(\\sum_{i=1}^{n} a_i\\right) \\begin{bmatrix}a & b \\\\ c & d\\end{bmatrix}\"","as":"math-warm-2"}
 {"wait_event":"scratchpad_completed","correlation":"math-warm-2","timeout_ms":10000}
-{"allocation_checkpoint":"animation"}
-{"allocation_checkpoint":"snapshot_slots"}
-{"allocation_checkpoint":"display_cache"}
+{"wait_event":"frame_presented","timeout_ms":10000}
 {"do":"reload_runtime","as":"reload"}
 {"wait_event":"runtime_reload_committed","correlation":"reload","timeout_ms":30000}
 {"wait_state":"runtime_ready","timeout_ms":10000}
@@ -32,6 +30,10 @@
 {"wait_event":"scratchpad_completed","correlation":"post-reload-reset-1","timeout_ms":10000}
 {"scratchpad":"L\"\\frac{x^2}{\\sqrt{y}} \\left(\\sum_{i=1}^{n} a_i\\right) \\begin{bmatrix}a & b \\\\ c & d\\end{bmatrix}\"","as":"post-reload-1"}
 {"wait_event":"scratchpad_completed","correlation":"post-reload-1","timeout_ms":10000}
+{"wait_event":"frame_presented","timeout_ms":10000}
+{"allocation_checkpoint":"animation"}
+{"allocation_checkpoint":"snapshot_slots"}
+{"allocation_checkpoint":"display_cache"}
 {"scratchpad":":reset","as":"post-reload-reset-2"}
 {"wait_event":"scratchpad_completed","correlation":"post-reload-reset-2","timeout_ms":10000}
 {"scratchpad":"L\"\\frac{x^2}{\\sqrt{y}} \\left(\\sum_{i=1}^{n} a_i\\right) \\begin{bmatrix}a & b \\\\ c & d\\end{bmatrix}\"","as":"post-reload-2"}

@@ -80,3 +80,28 @@ track_style :: proc(runtime: ^core.Dynview_System, style_revision: u64) {
     runtime^.compile_cache.last_style_revision = style_revision
     invalidate(runtime, DYNVIEW_INVALIDATE_STYLE)
 }
+
+// Track every requested JuliaMono variant's effective face identity.
+track_prose_fonts :: proc(
+    runtime: ^core.Dynview_System,
+    effective_keys: []core.Font_Key,
+    generations: []u64) {
+
+    count := int(core.Font_Key.Math_Regular)
+    if runtime == nil || len(effective_keys) != count || len(generations) != count {
+        return
+    }
+    cache := &runtime^.compile_cache
+    changed := false
+    for index in 0..<count {
+        if cache^.last_prose_effective_keys[index] != effective_keys[index] ||
+            cache^.last_prose_font_generations[index] != generations[index] {
+            changed = true
+        }
+        cache^.last_prose_effective_keys[index] = effective_keys[index]
+        cache^.last_prose_font_generations[index] = generations[index]
+    }
+    if changed {
+        invalidate(runtime, DYNVIEW_INVALIDATE_FONT)
+    }
+}

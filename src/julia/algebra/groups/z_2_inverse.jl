@@ -79,7 +79,7 @@ An inverse is the motion that undoes a given motion. In $\mathbb{Z}_2$, every el
 For an element $a$ in a group, an inverse $a^{-1}$ is an element such that
 $a \circ a^{-1} = a^{-1} \circ a = e$, where $e$ is the identity.
 
-1. $e^{-1} = e$: doing nothing undoes itself.\newline
+1. $e^{-1} = e$: doing nothing undoes itself.\\
 2. $r^{-1} = r$: one reflection undoes itself because reflecting twice gives back the original figure."""
 
 const RefVertexA = EuclidGeometry.reflect_about_axis_x_half(VertexA)

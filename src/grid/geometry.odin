@@ -32,6 +32,15 @@ Embedded_Grid_Placement :: struct {
     baseline_row: int,
 }
 
+// Outward row allocation for one exact vertical extent on the shared grid.
+Vertical_Reservation :: struct {
+    row_start: int,
+    row_count: int,
+    top: f32,
+    bottom: f32,
+    trailing_padding: f32,
+}
+
 // Report whether one scalar is finite.
 scalar_is_finite :: #force_inline proc(value: f32) -> bool {
     return !math.is_nan(value) && !math.is_inf(value)
@@ -82,6 +91,26 @@ extent_is_representable :: #force_inline proc(
 // Return the minimum positive cell span containing one validated extent.
 span_for_extent :: #force_inline proc(extent, cell_extent: f32) -> int {
     return max(1, int(math.ceil(f64(extent) / f64(cell_extent))))
+}
+
+// Round one exact extent outward from a row-aligned origin.
+reserve_vertical_extent :: proc(
+    row_start: int,
+    exact_height, cell_height: f32) -> (Vertical_Reservation, bool) {
+
+    if row_start < 0 || !scalar_is_finite(exact_height) ||
+        !scalar_is_finite(cell_height) || exact_height <= 0 || cell_height <= 0 ||
+        !extent_is_representable(exact_height, cell_height, row_start) {
+        return {}, false
+    }
+    row_count := span_for_extent(exact_height, cell_height)
+    top := f32(row_start)*cell_height
+    bottom := f32(row_start+row_count)*cell_height
+    return {
+        row_start = row_start, row_count = row_count,
+        top = top, bottom = bottom,
+        trailing_padding = bottom-top-exact_height,
+    }, true
 }
 
 // Place non-baseline content at the geometric center of its containing grid box.

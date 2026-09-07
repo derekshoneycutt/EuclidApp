@@ -213,7 +213,7 @@ normalization, semantic storage, snapshot copying, measurement, and layout.
 | --- | --- | --- | --- |
 | Submit | `src/julia/latex/facade.jl` | `emit_latex_view_text!`, `replay_emit_math_block!` | Raw source plus presentation metadata |
 | Classify | `src/dynview/parse/document_grammar.odin` | `tex_classify_source_mode`, `tex_document_whole_math` | Document or math mode and root style |
-| Parse/lower | `src/dynview/parse/` | bounded cursor, document grammar, math grammar, semantic builders | Font-independent commands, programs, nodes, and table descriptors |
+| Parse/lower | `src/dynview/parse/` | bounded cursor, document grammar, math grammar, semantic builders | Font-independent math programs plus document blocks and inlines |
 | Intern | `src/dynview/core/document_store.odin` | `document_store_intern`, `document_store_resolve` | Immutable generation-scoped semantic document |
 | Stage | `src/bridge/dynview_native_tex.odin` | native document/math import | Pointer-free semantic records in worker staging |
 | Publish | `src/bridge/runtime_service.odin` | snapshot validation and publication | Immutable slot-owned semantic snapshot |
@@ -221,6 +221,13 @@ normalization, semantic storage, snapshot copying, measurement, and layout.
 Native compatibility tests cover nested scripts, accents,
 radicals, fractions, stretch delimiters, matrix environments, declared operator
 names, and grouped mathematical alphabets.
+
+Document grammar revision 29 preserves paragraph and display blocks with bounded
+inline text, spacing, math, shape, penalty, forced-break, and technical display-row
+records. Space records
+retain source byte spans and carry one canonical space byte for native shaping. These
+records otherwise use indices and values only. They are the sole stored document
+representation. A parse or capacity failure publishes no semantic blocks or inlines.
 
 ### End-To-End Flow
 
@@ -254,11 +261,16 @@ flowchart LR
   - The document store keys exact source bytes with grammar, semantic profile,
     parse mode, and root style. Repeated source within one animation generation
     resolves the same immutable document.
-  - Bridge staging checkpoints cover text, commands, programs, math commands,
-    and descriptors. Any parse, store, or capacity failure restores the complete
-    fragment and preserves the authored fallback.
-  - Snapshots copy semantic records into slot-owned arenas. Document-store handles
-    and animation-arena pointers never cross into display-owned state.
+  - Bridge staging checkpoints cover text, commands, math records, document bytes,
+    blocks, and inlines. Any parse, store, range, or capacity failure restores the
+    complete fragment and preserves the authored fallback.
+  - Native document import copies exact source and semantic text into dedicated
+    staging bytes. It rebases block children, source/text spans, and inline math
+    programs before the animation-lifetime document handle leaves the owner path.
+  - Snapshots seal document bytes, descriptors, blocks, and inlines in slot-owned
+    arenas. Publication validates every alias, enum, span, child range, and math
+    program reference. Document-store handles and animation-arena pointers never
+    cross into display-owned state.
   - `src/dynview/math/programs.odin` measures script/large-op/fraction/radical/matrix
     structures before draw. It owns display, text, script, and script-script
     transitions, including cramped child state.
@@ -486,6 +498,52 @@ indexing `rl.Font` directly. Hot reload publishes the seed, exact-size metadata,
 shaper together, preserving the prior generation when any candidate component fails.
 All old pages are retired with that prior generation.
 
+Semantic prose shaping borrows those resident JuliaMono shapers through an
+exact-generation worker capability. Each requested variant resolves to either its own
+resident face or Regular, and the capability records both the requested and effective
+key so fallback publication cannot be confused with a later variant publication at the
+same generation number. The display thread tracks all 14 effective key/generation
+identities and invalidates Dynview when any identity changes. The simulation executor
+owns one fixed-capacity prose glyph workspace for its complete lifetime; it is created
+once before the worker pool starts and released after the pool joins.
+
+During invalidated compilation, every semantic text and space inline is shaped before
+math measurement and document layout. Bounded arena builders retain source-relative
+clusters, advances, offsets, exact face identity, and aggregate width and ink metrics.
+They publish `Dynview_Document_Shaped_Run` and glyph slices only after all inline,
+source, glyph, and generation spans validate. Failure clears both slices rather than
+publishing a partial cache.
+
+Semantic document compilation skips command-layout construction. It consumes sealed
+prose runs and recursively measured NewCM programs directly, lowering semantic inlines
+to bounded boxes, glue, penalties, and forced breaks before selecting measured line
+breaks. Unbreakable sequences remain intact and become explicit overfull lines when
+necessary. Math and Euclid shapes remain atomic boxes whose dimensions come from the
+measured math programs and shape payloads. Standalone math and unrelated plain command
+streams retain the command-layout path.
+
+The resulting node, block, line, item, and copy-target slices publish as one
+arena-backed authoritative cache. Items retain semantic source and canonical text spans;
+prose copy targets derive their horizontal positions and UTF-8 ranges from sealed
+HarfBuzz clusters, while math and shape targets retain their source spans. Missing
+prose measurements or any lowering or capacity failure clears every document-layout
+slice. Complete failure returns the view to its authored plain-text fallback.
+
+The document cache places composed lines in exact pixels with TeX-inspired
+previous-depth leading. Each next baseline uses the configured baseline skip when the
+measured depth and ascent permit it, otherwise it falls back to a non-overlapping line
+skip. Paragraph and display glue apply between blocks, reset at semantic document
+boundaries, and display lines center within the measured panel width unless an explicit
+alignment overrides them. Final line origins propagate to items and cluster-derived
+copy rectangles without reconstructing rows or columns.
+
+Only a completed block crosses back into outer-grid geometry. Its exact extent,
+including resolved leading glue, rounds outward from the current row boundary; the
+layout cache records the reserved row range and trailing padding separately from the
+exact ink bounds. Semantic drawing and scrolling consume these sealed positions, while
+the grid package owns only generic extent rounding and contains no document semantics.
+Copy icons use the same semantic block bounds and retain the authored fallback payload.
+
 Dynview owns a separate generation-tagged NewCM buffer on its preparation worker.
 Julia marks normal math runs as italic variables or upright symbols using existing
 style IDs. Before NewCM shaping, Odin strictly decodes the original run into bounded
@@ -624,13 +682,13 @@ This policy is strict by design.
   after the Julia owner thread has stopped during application teardown.
 - Each Julia runtime view-snapshot slot owns one growing arena and bounded builders.
   Fallback text, semantic command text, commands, math programs, table descriptors,
-  math commands, and math nodes are sealed arena-backed slices. A slot reset is
-  permitted only after it is
+  math commands, math nodes, document bytes, document descriptors, blocks, and
+  inlines are sealed arena-backed slices. A slot reset is permitted only after it is
   `Free`, so every payload remains valid through `Pending`, `Complete`, and `Published`.
-  Display publication installs immutable views of all seven payloads before releasing the
+  Display publication installs immutable views of every payload before releasing the
   previous slot. Compilation copies math records only into its private mutable working
-  cache for derived metrics and shaping indexes. Display aliases are cleared before
-  free-slot reuse or service teardown.
+  cache for derived metrics, shaping indexes, and authoritative document layout.
+  Display aliases are cleared before free-slot reuse or service teardown.
 - Font preparation uses one 96 MiB virtual scratch arena for seed and glyph-page
   work. Each completed page uploads its pixels and copies scalar metrics into
   generation-owned storage before the arena is reset.

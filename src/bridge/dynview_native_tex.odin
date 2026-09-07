@@ -3,7 +3,6 @@ package bridge
 import "../core"
 import dyncore "../dynview/core"
 import dynparse "../dynview/parse"
-import rl "vendor:raylib"
 
 DYNVIEW_NATIVE_SCRIPT_SCALE :: f32(0.62)
 DYNVIEW_NATIVE_SCRIPT_SUP_RAISE :: f32(0.44)
@@ -34,13 +33,13 @@ Dynview_Native_Math_Import :: struct {
     blob_offset: int,
 }
 
-// Group immutable state shared while replaying one flat native document.
-Dynview_Native_Document_Replay :: struct {
-    runtime: ^core.Dynview_System,
-    document: ^dyncore.Dynview_Document,
-    program_base: int,
-    blob_offset: int,
-    text_style: i32,
+// Group staging-relative ranges needed to publish one semantic document descriptor.
+Dynview_Native_Document_Offsets :: struct {
+    source: int,
+    text: int,
+    block: int,
+    inline_start: int,
+    display_row: int,
 }
 
 //   Build a complete document stream with a fallback command as its commit boundary.
@@ -139,7 +138,14 @@ dynview_native_import_math_source :: proc(
     if resolve_status != .Ok {
         return dynview_native_store_status(resolve_status)
     }
-    styles := Dynview_Native_Math_Styles{
+    styles := dynview_native_document_styles(text_style)
+    return dynview_native_import_math(runtime, &document, styles)
+}
+
+//   Build the stable math style profile used by native document imports.
+dynview_native_document_styles :: #force_inline proc(
+    text_style: i32) -> Dynview_Native_Math_Styles {
+    return {
         text = text_style,
         math = BRIDGE_DYNVIEW_STYLE_ITALIC,
         regular = BRIDGE_DYNVIEW_STYLE_CUSTOM_FONT |
@@ -147,7 +153,6 @@ dynview_native_import_math_source :: proc(
         mathbb = BRIDGE_DYNVIEW_STYLE_CUSTOM_FONT |
             BRIDGE_DYNVIEW_FONT_FLAG_REGULAR,
     }
-    return dynview_native_import_math(runtime, &document, styles)
 }
 
 //   Translate a document-store status without poisoning an authored fallback stream.
@@ -162,41 +167,17 @@ dynview_native_store_status :: proc(
     return BRIDGE_STATUS_ILLEGAL_STATE
 }
 
-//   Copy document semantics once and replay every flat run in source order.
+//   Copy one authoritative semantic document into snapshot staging.
 dynview_native_replay_document :: proc(
     runtime: ^core.Dynview_System,
     document: ^dyncore.Dynview_Document,
     text_style: i32) -> i32 {
-    replay, status := dynview_native_prepare_document_replay(
-        runtime, document, text_style)
-    if status != BRIDGE_STATUS_OK {
-        return status
+    if !dynview_native_record_capacity_available(runtime, document) ||
+        !dynview_native_document_capacity_available(runtime, document) {
+        return BRIDGE_STATUS_OUT_OF_CAPACITY
     }
-    for &run, index in document.document_runs {
-        status = dynview_native_replay_document_run(&replay, &run, index)
-        if status != BRIDGE_STATUS_OK {
-            return status
-        }
-    }
-    return BRIDGE_STATUS_OK
-}
-
-//   Copy shared semantics and prepare stable offsets for flat document replay.
-dynview_native_prepare_document_replay :: proc(
-    runtime: ^core.Dynview_System,
-    document: ^dyncore.Dynview_Document,
-    text_style: i32) -> (Dynview_Native_Document_Replay, i32) {
-    if !dynview_native_record_capacity_available(runtime, document) {
-        return {}, BRIDGE_STATUS_OUT_OF_CAPACITY
-    }
-    styles := Dynview_Native_Math_Styles{
-        text = text_style,
-        math = BRIDGE_DYNVIEW_STYLE_ITALIC,
-        regular = BRIDGE_DYNVIEW_STYLE_CUSTOM_FONT |
-            BRIDGE_DYNVIEW_FONT_FLAG_REGULAR,
-        mathbb = BRIDGE_DYNVIEW_STYLE_CUSTOM_FONT |
-            BRIDGE_DYNVIEW_FONT_FLAG_REGULAR,
-    }
+    styles := dynview_native_document_styles(text_style)
+    program_base := runtime.compile_cache.math_program_count
     blob_offset, blob_count: int
     status := dynview_append_text_payload(
         runtime, string(document.text), &blob_offset, &blob_count)
@@ -204,209 +185,257 @@ dynview_native_prepare_document_replay :: proc(
         status = dynview_native_import_math_records(
             runtime, document, styles, blob_offset)
     }
-    if status != BRIDGE_STATUS_OK {
-        return {}, status
+    if status == BRIDGE_STATUS_OK {
+        status = dynview_native_import_document_semantics(
+            runtime, document, program_base)
     }
-    program_base := runtime.compile_cache.math_program_count - len(document.programs)
-    return Dynview_Native_Document_Replay{
-        runtime = runtime,
-        document = document,
-        program_base = program_base,
-        blob_offset = blob_offset,
-        text_style = text_style,
-    }, BRIDGE_STATUS_OK
+    return status
 }
 
-//   Replay one flat document run into the current command stream.
-dynview_native_replay_document_run :: proc(
-    ctx: ^Dynview_Native_Document_Replay,
-    run: ^dynparse.Tex_Document_Run,
-    index: int) -> i32 {
-    switch run.kind {
-    case .Text:
-        return dynview_native_push_document_text(
-            ctx.runtime, run, ctx.blob_offset, ctx.text_style)
-    case .Line_Break:
-        return dynview_native_push_line_break(ctx.runtime)
-    case .Math_Inline:
-        return dynview_native_push_document_math(
-            ctx.runtime, run, ctx.program_base, ctx.blob_offset, ctx.text_style)
-    case .Math_Display:
-        return dynview_native_push_display_math(ctx, run, index)
-    case .Shape:
-        return dynview_native_push_document_shape(ctx.runtime, run, ctx.text_style)
-    }
-    return BRIDGE_STATUS_INVALID_ARGUMENT
-}
-
-//   Append one document text run referencing the copied semantic text blob.
-dynview_native_push_document_text :: proc(
+//   Check exact document byte, descriptor, block, and inline capacities before mutation.
+dynview_native_document_capacity_available :: proc(
     runtime: ^core.Dynview_System,
-    run: ^dynparse.Tex_Document_Run,
-    blob_offset: int,
-    text_style: i32) -> i32 {
-    command := core.Dynview_Command{
-        kind = .Text_Run,
-        block_id = runtime.command_buffer.stream_open_block_id,
-        style_id = dynview_native_document_style(run.font_flags, text_style),
-        text_offset = blob_offset + run.text.offset,
-        text_len = run.text.length,
-    }
-    dynview_native_apply_color(&command, run.color)
-    return dynview_push_command(runtime, command)
+    document: ^dyncore.Dynview_Document) -> bool {
+
+    cache := &runtime.compile_cache
+    return cache.document_text_count + len(document.source) + len(document.text) <=
+        core.DYNVIEW_MAX_DOCUMENT_BYTES &&
+        cache.document_count < core.DYNVIEW_MAX_DOCUMENTS &&
+        cache.document_block_count + len(document.document_blocks) <=
+            core.DYNVIEW_MAX_DOCUMENT_BLOCKS &&
+        cache.document_inline_count + len(document.document_inlines) <=
+            core.DYNVIEW_MAX_DOCUMENT_INLINES &&
+        cache.document_display_row_count + len(document.document_display_rows) <=
+            core.DYNVIEW_MAX_DOCUMENT_DISPLAY_ROWS
 }
 
-//   Append one line-break command to the current native document block.
-dynview_native_push_line_break :: proc(runtime: ^core.Dynview_System) -> i32 {
-    return dynview_push_command(runtime, {
-        kind = .Line_Break,
-        block_id = runtime.command_buffer.stream_open_block_id,
-    })
-}
-
-//   Append one document math run referencing an already imported native program.
-dynview_native_push_document_math :: proc(
+//   Copy one complete semantic document and rewrite all ranges to staging offsets.
+dynview_native_import_document_semantics :: proc(
     runtime: ^core.Dynview_System,
-    run: ^dynparse.Tex_Document_Run,
-    program_base, blob_offset: int,
-    text_style: i32) -> i32 {
-    if run.math_program < 0 ||
-        run.math_program >= runtime.compile_cache.math_program_count-program_base {
-        return BRIDGE_STATUS_INVALID_ARGUMENT
-    }
-    program_id := program_base + run.math_program
-    runtime.compile_cache.math_programs[program_id].copy_text_offset =
-        blob_offset + run.text.offset
-    runtime.compile_cache.math_programs[program_id].copy_text_len = run.text.length
-    return dynview_push_command(runtime, {
-        kind = .Math_Block,
-        block_id = runtime.command_buffer.stream_open_block_id,
-        style_id = dynview_native_document_style(run.font_flags, text_style),
-        math_program_id = i32(program_id),
-        text_offset = blob_offset + run.text.offset,
-        text_len = run.text.length,
-    })
-}
+    document: ^dyncore.Dynview_Document,
+    program_base: int) -> i32 {
 
-//   Replay display math with one surrounding break where the document lacks one.
-dynview_native_push_display_math :: proc(
-    ctx: ^Dynview_Native_Document_Replay,
-    run: ^dynparse.Tex_Document_Run,
-    index: int) -> i32 {
-    if index == 0 || ctx.document.document_runs[index-1].kind != .Line_Break {
-        status := dynview_native_push_line_break(ctx.runtime)
-        if status != BRIDGE_STATUS_OK {
-            return status
+    cache := &runtime.compile_cache
+    source_offset, text_offset := dynview_native_copy_document_text(cache, document)
+    block_start := cache.document_block_count
+    inline_start := cache.document_inline_count
+    display_row_start := cache.document_display_row_count
+    for row in document.document_display_rows {
+        converted, ok := dynview_native_document_display_row(
+            row, document, source_offset, program_base)
+        if !ok {return BRIDGE_STATUS_INVALID_ARGUMENT}
+        cache.document_display_rows[cache.document_display_row_count] = converted
+        cache.document_display_row_count += 1
+    }
+    next_number := 1
+    for block in document.document_blocks {
+        converted, ok := dynview_native_document_block(
+            block, document, source_offset, inline_start, display_row_start)
+        if !ok {
+            return BRIDGE_STATUS_INVALID_ARGUMENT
         }
+        dynview_native_number_display_rows(cache, converted, &next_number)
+        cache.document_blocks[cache.document_block_count] = converted
+        cache.document_block_count += 1
     }
-    status := dynview_native_push_document_math(
-        ctx.runtime, run, ctx.program_base, ctx.blob_offset, ctx.text_style)
-    if status != BRIDGE_STATUS_OK {
-        return status
+    for item in document.document_inlines {
+        converted, ok := dynview_native_document_inline(
+            item, document, source_offset, text_offset, program_base)
+        if !ok {
+            return BRIDGE_STATUS_INVALID_ARGUMENT
+        }
+        cache.document_inlines[cache.document_inline_count] = converted
+        cache.document_inline_count += 1
     }
-    if index+1 == len(ctx.document.document_runs) ||
-        ctx.document.document_runs[index+1].kind != .Line_Break {
-        return dynview_native_push_line_break(ctx.runtime)
-    }
+    dynview_native_publish_document(cache, document, {
+        source = source_offset,
+        text = text_offset,
+        block = block_start,
+        inline_start = inline_start,
+        display_row = display_row_start,
+    })
     return BRIDGE_STATUS_OK
 }
 
-//   Preserve caller text style for regular runs and encode explicit font flags.
-dynview_native_document_style :: proc(font_flags, text_style: i32) -> i32 {
-    if font_flags == BRIDGE_DYNVIEW_FONT_FLAG_REGULAR {
-        return text_style
-    }
-    return BRIDGE_DYNVIEW_STYLE_CUSTOM_FONT | font_flags
+//   Copy exact source and semantic text into staging-owned document bytes.
+dynview_native_copy_document_text :: proc(
+    cache: ^core.Dynview_Compile_Cache,
+    document: ^dyncore.Dynview_Document) -> (int, int) {
+
+    source_offset := cache.document_text_count
+    copy(cache.document_text[source_offset:], transmute([]u8)document.source)
+    cache.document_text_count += len(document.source)
+    text_offset := cache.document_text_count
+    copy(cache.document_text[text_offset:], document.text)
+    cache.document_text_count += len(document.text)
+    return source_offset, text_offset
 }
 
-//   Apply one parser color to a command without retaining parser-owned memory.
-dynview_native_apply_color :: proc(
-    command: ^core.Dynview_Command,
-    color: dynparse.Tex_Document_Color) {
-    if color.present {
-        command.has_brush_color = true
-        command.brush_color = rl.Color{color.red, color.green, color.blue, color.alpha}
+//   Publish one semantic document descriptor after all child records are copied.
+dynview_native_publish_document :: proc(
+    cache: ^core.Dynview_Compile_Cache,
+    document: ^dyncore.Dynview_Document,
+    offsets: Dynview_Native_Document_Offsets) {
+
+    cache.documents[cache.document_count] = {
+        source_offset = offsets.source,
+        source_count = len(document.source),
+        text_offset = offsets.text,
+        text_count = len(document.text),
+        block_start = offsets.block,
+        block_count = len(document.document_blocks),
+        inline_start = offsets.inline_start,
+        inline_count = len(document.document_inlines),
+        display_row_start = offsets.display_row,
+        display_row_count = len(document.document_display_rows),
+    }
+    cache.document_count += 1
+}
+
+//   Rewrite one parser block into the staging document and source ranges.
+dynview_native_document_block :: proc(
+    block: dynparse.Tex_Document_Block,
+    document: ^dyncore.Dynview_Document,
+    source_base, inline_base, display_row_base: int) -> (
+        core.Dynview_Document_Block, bool) {
+
+    if !dynview_native_span_valid(
+        block.source.offset, block.source.length, len(document.source)) ||
+        !dynview_native_span_valid(block.inline_start, block.inline_count,
+            len(document.document_inlines)) ||
+        !dynview_native_span_valid(block.display_row_start,
+            block.display_row_count, len(document.document_display_rows)) {
+        return {}, false
+    }
+    return {
+        kind = core.Dynview_Document_Block_Kind(block.kind),
+        inline_start = inline_base + block.inline_start,
+        inline_count = block.inline_count,
+        source_offset = source_base + block.source.offset,
+        source_count = block.source.length,
+        alignment = core.Dynview_Document_Alignment(block.format.alignment),
+        no_indent = block.format.no_indent,
+        display_kind = core.Dynview_Document_Display_Kind(block.display_kind),
+        display_row_start = display_row_base+block.display_row_start,
+        display_row_count = block.display_row_count,
+        display_numbered = block.display_numbered,
+    }, true
+}
+
+// Rewrite one parser display row into staging source and math-program offsets.
+dynview_native_document_display_row :: proc(
+    row: dynparse.Tex_Document_Display_Row,
+    document: ^dyncore.Dynview_Document,
+    source_base, program_base: int) -> (core.Dynview_Document_Display_Row, bool) {
+
+    if !dynview_native_span_valid(
+        row.source.offset, row.source.length, len(document.source)) ||
+        row.primary_program < 0 || row.primary_program >= len(document.programs) ||
+        row.secondary_program >= len(document.programs) {
+        return {}, false
+    }
+    return {
+        source_offset = source_base+row.source.offset,
+        source_count = row.source.length,
+        primary_program_id = program_base+row.primary_program,
+        secondary_program_id = program_base+row.secondary_program if
+            row.secondary_program >= 0 else -1,
+        alignment = core.Dynview_Document_Alignment(row.alignment),
+        suppress_number = row.suppress_number,
+    }, true
+}
+
+// Assign stable document-local numbers to eligible rows in one display block.
+dynview_native_number_display_rows :: proc(
+    cache: ^core.Dynview_Compile_Cache,
+    block: core.Dynview_Document_Block,
+    next_number: ^int) {
+
+    if !block.display_numbered {return}
+    for relative_index in 0..<block.display_row_count {
+        row := &cache.document_display_rows[block.display_row_start+relative_index]
+        eligible := !row.suppress_number
+        if block.display_kind == .Multline {
+            eligible = eligible && relative_index == block.display_row_count-1
+        }
+        if eligible {
+            row.number = next_number^
+            next_number^ += 1
+        }
     }
 }
 
-//   Convert one flat shape run to the established pointer-free command payload.
-dynview_native_push_document_shape :: proc(
-    runtime: ^core.Dynview_System,
-    run: ^dynparse.Tex_Document_Run,
-    text_style: i32) -> i32 {
-    shape := &run.shape
-    command := core.Dynview_Command{
-        block_id = runtime.command_buffer.stream_open_block_id,
-        style_id = dynview_native_document_style(run.font_flags, text_style),
-        inline_atom_dimension = shape.width,
-        inline_box_height = shape.height,
-        inline_atom_stroke = shape.thickness,
-        shape_is_filled = shape.filled,
-        inline_outline_stroke = shape.thickness,
+//   Rewrite one parser inline into staging byte and math-program offsets.
+dynview_native_document_inline :: proc(
+    item: dynparse.Tex_Document_Inline,
+    document: ^dyncore.Dynview_Document,
+    source_base, text_base, program_base: int) -> (
+        core.Dynview_Document_Inline, bool) {
+
+    if !dynview_native_span_valid(
+        item.source.offset, item.source.length, len(document.source)) ||
+        !dynview_native_span_valid(
+            item.text.offset, item.text.length, len(document.text)) ||
+        item.math_program < -1 || item.math_program >= len(document.programs) {
+        return {}, false
     }
-    if !dynview_native_shape_kind(&command, shape) {
-        return BRIDGE_STATUS_INVALID_ARGUMENT
+    program_id := -1
+    if item.math_program >= 0 {
+        program_id = program_base + item.math_program
     }
-    dynview_native_apply_shape_colors(&command, shape)
-    return dynview_push_command(runtime, command)
+    result := core.Dynview_Document_Inline{
+        kind = core.Dynview_Document_Inline_Kind(item.kind),
+        source_offset = source_base + item.source.offset,
+        source_count = item.source.length,
+        text_offset = text_base + item.text.offset,
+        text_count = item.text.length,
+        font_flags = item.font_flags,
+        color = dynview_native_document_color(item.color),
+        space_kind = core.Dynview_Document_Space_Kind(item.space_kind),
+        shape = dynview_native_document_shape(item.shape),
+        root_style = core.Dynview_Math_Style_Level(item.root_style),
+        math_program_id = program_id,
+        penalty = item.penalty,
+    }
+    return result, true
 }
 
-//   Select one command kind and geometry convention for a parsed shape.
-dynview_native_shape_kind :: proc(
-    command: ^core.Dynview_Command,
-    shape: ^dynparse.Tex_Document_Shape) -> bool {
-    switch shape.kind {
-    case .Point:
-        command.kind = .Inline_Filled_Circle
-        command.inline_outline_stroke = 0
-    case .Line: command.kind = .Inline_Line
-    case .Circle:
-        command.kind = .Inline_Filled_Circle if shape.filled else .Inline_Circle
-    case .Box:
-        command.kind = .Inline_Filled_Box if shape.filled else .Inline_Box
-    case .Angle, .Semicircle:
-        command.kind = .Inline_Pie_Section
-        command.pie_start_angle_degrees = shape.start_angle
-        command.pie_end_angle_degrees = shape.end_angle
-        command.pie_is_filled = shape.filled
-    case .Perpendicular: command.kind = .Inline_Perpendicular
-    case .Triangle: command.kind = .Inline_Triangle
-    case .Pentagon: command.kind = .Inline_Pentagon
-    case .None: return false
+//   Copy one parser shape payload without retaining parser-owned storage.
+dynview_native_document_shape :: proc(
+    shape: dynparse.Tex_Document_Shape) -> core.Dynview_Document_Shape {
+
+    result := core.Dynview_Document_Shape{
+        present = shape.present,
+        kind = core.Dynview_Document_Shape_Kind(shape.kind),
+        color = dynview_native_document_color(shape.color),
+        width = shape.width,
+        height = shape.height,
+        thickness = shape.thickness,
+        filled = shape.filled,
+        start_angle = shape.start_angle,
+        end_angle = shape.end_angle,
+        fill_color = dynview_native_document_color(shape.fill_color),
+        arc_color = dynview_native_document_color(shape.arc_color),
     }
-    return true
-}
-
-//   Copy inherited fill, outline, and edge colors into one shape command.
-dynview_native_apply_shape_colors :: proc(
-    command: ^core.Dynview_Command,
-    shape: ^dynparse.Tex_Document_Shape) {
-    base := dynview_native_color_or_white(shape.color)
-    command.has_brush_color = shape.filled || shape.color.present
-    command.brush_color = dynview_native_color_or(shape.fill_color, base)
-    command.has_outline_color = shape.arc_color.present || shape.color.present
-    command.outline_color = dynview_native_color_or(shape.arc_color, base)
-    command.shape_edge_color_1 = dynview_native_color_or(shape.edge_colors[0], base)
-    command.shape_edge_color_2 = dynview_native_color_or(shape.edge_colors[1], base)
-    command.shape_edge_color_3 = dynview_native_color_or(shape.edge_colors[2], base)
-    command.shape_edge_color_4 = dynview_native_color_or(shape.edge_colors[3], base)
-    command.shape_edge_color_5 = dynview_native_color_or(shape.edge_colors[4], base)
-}
-
-//   Convert one present parser color or use a caller-provided rendering fallback.
-dynview_native_color_or :: proc(
-    color: dynparse.Tex_Document_Color,
-    fallback: rl.Color) -> rl.Color {
-    if color.present {
-        return {color.red, color.green, color.blue, color.alpha}
+    for color, index in shape.edge_colors {
+        result.edge_colors[index] = dynview_native_document_color(color)
     }
-    return fallback
+    return result
 }
 
-//   Convert one parser color with the legacy white shape fallback.
-dynview_native_color_or_white :: proc(
-    color: dynparse.Tex_Document_Color) -> rl.Color {
-    return dynview_native_color_or(color, rl.Color{255, 255, 255, 255})
+//   Copy one parser color into a render-package-independent semantic wrapper.
+dynview_native_document_color :: #force_inline proc(
+    color: dynparse.Tex_Document_Color) -> core.Dynview_Document_Color {
+    return {
+        present = color.present,
+        value = {color.red, color.green, color.blue, color.alpha},
+    }
+}
+
+//   Validate one nonnegative offset and count against a bounded source.
+dynview_native_span_valid :: #force_inline proc(
+    offset, count, total: int) -> bool {
+    return offset >= 0 && count >= 0 && count <= total && offset <= total-count
 }
 
 //   Intern raw math source and copy its semantics into current snapshot staging.

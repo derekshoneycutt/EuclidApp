@@ -4,7 +4,7 @@ import "core:mem"
 import app_core "../../core"
 import dynparse "../parse"
 
-DYNVIEW_DOCUMENT_GRAMMAR_REVISION :: u32(24)
+DYNVIEW_DOCUMENT_GRAMMAR_REVISION :: u32(29)
 DYNVIEW_DOCUMENT_SEMANTIC_PROFILE_DEFAULT :: u32(1)
 DYNVIEW_DOCUMENT_HASH_OFFSET :: u64(14695981039346656037)
 DYNVIEW_DOCUMENT_HASH_PRIME :: u64(1099511628211)
@@ -27,7 +27,9 @@ Dynview_Document :: struct {
     ops: []dynparse.Tex_Math_Op,
     programs: []dynparse.Tex_Math_Program,
     table_descriptors: []dynparse.Tex_Table_Descriptor,
-    document_runs: []dynparse.Tex_Document_Run,
+    document_blocks: []dynparse.Tex_Document_Block,
+    document_inlines: []dynparse.Tex_Document_Inline,
+    document_display_rows: []dynparse.Tex_Document_Display_Row,
     root_program: int,
     plain_text: dynparse.Tex_Text_Span,
     parse_status: dynparse.Tex_Parse_Status,
@@ -51,7 +53,9 @@ Dynview_Document_Blob_Layout :: struct {
     ops_offset: int,
     programs_offset: int,
     tables_offset: int,
-    runs_offset: int,
+    blocks_offset: int,
+    inlines_offset: int,
+    display_rows_offset: int,
     byte_count: int,
 }
 
@@ -299,10 +303,17 @@ document_store_blob_layout :: proc(
     offset = document_store_align(offset, align_of(dynparse.Tex_Table_Descriptor))
     layout.tables_offset = offset
     offset += output.table_descriptor_count*size_of(dynparse.Tex_Table_Descriptor)
-    offset = document_store_align(offset, align_of(dynparse.Tex_Document_Run))
-    layout.runs_offset = offset
-    layout.byte_count = offset +
-        output.document_run_count*size_of(dynparse.Tex_Document_Run)
+    offset = document_store_align(offset, align_of(dynparse.Tex_Document_Block))
+    layout.blocks_offset = offset
+    offset += output.document_block_count*size_of(dynparse.Tex_Document_Block)
+    offset = document_store_align(offset, align_of(dynparse.Tex_Document_Inline))
+    layout.inlines_offset = offset
+    offset += output.document_inline_count*size_of(dynparse.Tex_Document_Inline)
+    offset = document_store_align(
+        offset, align_of(dynparse.Tex_Document_Display_Row))
+    layout.display_rows_offset = offset
+    layout.byte_count = offset + output.document_display_row_count*
+        size_of(dynparse.Tex_Document_Display_Row)
     return layout
 }
 
@@ -397,7 +408,12 @@ document_store_copy_semantics :: proc(
     entry.program_count = output.program_count
     entry.tables_offset = layout.tables_offset
     entry.table_count = output.table_descriptor_count
-    entry.runs_offset, entry.run_count = layout.runs_offset, output.document_run_count
+    entry.blocks_offset = layout.blocks_offset
+    entry.block_count = output.document_block_count
+    entry.inlines_offset = layout.inlines_offset
+    entry.inline_count = output.document_inline_count
+    entry.display_rows_offset = layout.display_rows_offset
+    entry.display_row_count = output.document_display_row_count
     entry.root_program = output.root_program
     entry.plain_text_offset = output.plain_text.offset
     entry.plain_text_length = output.plain_text.length
@@ -412,9 +428,24 @@ document_store_copy_semantics :: proc(
     copy(document_store_typed_slice(dynparse.Tex_Table_Descriptor,
         bytes, layout.tables_offset, output.table_descriptor_count),
         output.table_descriptors[:output.table_descriptor_count])
-    copy(document_store_typed_slice(dynparse.Tex_Document_Run,
-        bytes, layout.runs_offset, output.document_run_count),
-        output.document_runs[:output.document_run_count])
+    document_store_copy_document_semantics(entry, bytes, output, layout)
+}
+
+//   Copy structured document records into their aligned blob regions.
+document_store_copy_document_semantics :: proc(
+    entry: ^app_core.Dynview_Document_Entry,
+    bytes: []u8,
+    output: ^dynparse.Tex_Semantic_Output,
+    layout: Dynview_Document_Blob_Layout) {
+    copy(document_store_typed_slice(dynparse.Tex_Document_Block,
+        bytes, layout.blocks_offset, output.document_block_count),
+        output.document_blocks[:output.document_block_count])
+    copy(document_store_typed_slice(dynparse.Tex_Document_Inline,
+        bytes, layout.inlines_offset, output.document_inline_count),
+        output.document_inlines[:output.document_inline_count])
+    copy(document_store_typed_slice(dynparse.Tex_Document_Display_Row,
+        bytes, layout.display_rows_offset, output.document_display_row_count),
+        output.document_display_rows[:output.document_display_row_count])
 }
 
 //   Resolve aligned semantic prefixes from one validated immutable blob.
@@ -432,8 +463,13 @@ document_store_resolve_semantics :: proc(
         bytes, entry.programs_offset, entry.program_count)
     document.table_descriptors = document_store_typed_slice(
         dynparse.Tex_Table_Descriptor, bytes, entry.tables_offset, entry.table_count)
-    document.document_runs = document_store_typed_slice(dynparse.Tex_Document_Run,
-        bytes, entry.runs_offset, entry.run_count)
+    document.document_blocks = document_store_typed_slice(
+        dynparse.Tex_Document_Block, bytes, entry.blocks_offset, entry.block_count)
+    document.document_inlines = document_store_typed_slice(
+        dynparse.Tex_Document_Inline, bytes, entry.inlines_offset, entry.inline_count)
+    document.document_display_rows = document_store_typed_slice(
+        dynparse.Tex_Document_Display_Row, bytes,
+        entry.display_rows_offset, entry.display_row_count)
 }
 
 //   View one typed aligned prefix inside immutable byte storage.

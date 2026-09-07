@@ -48,3 +48,25 @@ font_resolve_weight_from_flags :: #force_inline proc(
 
     return resolved
 }
+
+// Convert canonical weight and italic flags to one indexed JuliaMono cache key.
+font_key_from_flags :: proc(flags: Font_Variant_Flags) -> Font_Key {
+    italic := font_has_flag(flags, .Italic)
+    switch font_resolve_weight_from_flags(flags) {
+    case .Light:
+        return italic ? .Light_Italic : .Light
+    case .Medium:
+        return italic ? .Medium_Italic : .Medium
+    case .Semibold:
+        return italic ? .Semi_Bold_Italic : .Semi_Bold
+    case .Bold:
+        return italic ? .Bold_Italic : .Bold
+    case .Extrabold:
+        return italic ? .Extra_Bold_Italic : .Extra_Bold
+    case .Black:
+        return italic ? .Black_Italic : .Black
+    case .Regular:
+        return italic ? .Regular_Italic : .Regular
+    }
+    return .Regular
+}

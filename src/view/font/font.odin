@@ -882,24 +882,7 @@ cache_terminal_resolver :: proc(cache: ^Font_Cache) -> Font_Resolver {
 
 //   Convert dynview's weight and italic flags to one indexed cache key.
 font_key_from_flags :: proc(flags: core.Font_Variant_Flags) -> Font_Key {
-    italic := core.font_has_flag(flags, .Italic)
-    switch core.font_resolve_weight_from_flags(flags) {
-    case .Light:
-        return italic ? .Light_Italic : .Light
-    case .Medium:
-        return italic ? .Medium_Italic : .Medium
-    case .Semibold:
-        return italic ? .Semi_Bold_Italic : .Semi_Bold
-    case .Bold:
-        return italic ? .Bold_Italic : .Bold
-    case .Extrabold:
-        return italic ? .Extra_Bold_Italic : .Extra_Bold
-    case .Black:
-        return italic ? .Black_Italic : .Black
-    case .Regular:
-        return italic ? .Regular_Italic : .Regular
-    }
-    return .Regular
+    return core.font_key_from_flags(flags)
 }
 
 //   Build generation-owned shaping and GPU candidates from one prepared font.
@@ -912,6 +895,7 @@ cache_publication_candidates :: proc(
         cache, prepared.key, path, &candidate.shaping) {
         return false
     }
+    candidate.raster_ascent = prepared.raster_ascent
     if !font_generation_seed_records_init(
         candidate, prepared, context.allocator) ||
         !finalize(prepared, &candidate.font) {
@@ -948,6 +932,7 @@ cache_publish :: proc(cache: ^Font_Cache, prepared: ^Prepared_Font) -> bool {
     candidate = {
         font = candidate.font,
         shaping = candidate.shaping,
+        raster_ascent = candidate.raster_ascent,
         generation = generation,
         requested_generation = entry.requested_generation,
         resident = true,
@@ -986,5 +971,48 @@ cache_shape :: proc(
     cache.shaping_telemetry.shaped_runs += 1
     cache.shaping_telemetry.shaped_glyphs += u64(glyph_count)
     return glyph_count, true
+}
+
+// Describe the resident face that currently satisfies one requested JuliaMono key.
+cache_shaping_identity :: proc(
+    cache: ^Font_Cache,
+    requested_key: Font_Key) -> (core.Font_Shaping_Identity, bool) {
+
+    if cache == nil || requested_key == .Math_Regular {
+        return {}, false
+    }
+    entry := cache_effective_entry(cache, requested_key)
+    if entry == nil || !entry^.resident || entry^.generation == 0 ||
+        entry^.shaping.font == nil || entry^.shaping.buffer == nil {
+        return {}, false
+    }
+    effective_key := requested_key
+    if entry == &cache^.entries[int(Font_Key.Regular)] {
+        effective_key = .Regular
+    }
+    return {effective_key, entry^.generation, entry^.raster_ascent}, true
+}
+
+// Shape through one exact resident face generation without fallback substitution.
+cache_shape_generation :: proc(
+    cache: ^Font_Cache, key: Font_Key, generation: u64,
+    text: string, output: []Shaped_Glyph) -> (int, bool) {
+
+    if !cache_generation_is_resident(cache, key, generation) {
+        return 0, false
+    }
+    return harfbuzz_shape(&cache^.entries[int(key)].shaping, text, true, output)
+}
+
+// Query one glyph through one exact resident face generation.
+cache_glyph_extents_generation :: proc(
+    cache: ^Font_Cache, key: Font_Key, generation: u64,
+    glyph_id: u32) -> (core.Font_Glyph_Extents, bool) {
+
+    if !cache_generation_is_resident(cache, key, generation) {
+        return {}, false
+    }
+    return harfbuzz_glyph_extents(
+        &cache^.entries[int(key)].shaping, glyph_id)
 }
 

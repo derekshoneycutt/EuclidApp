@@ -143,8 +143,8 @@ function normalize_latex_result_source(latex_source::AbstractString)
     return source
 end
 
-"""Render a result value using `text/latex` MIME when supported, else return `nothing`."""
-function format_result_latex_source(value, runtime::Module)
+"""Render and classify one `text/latex` MIME result, or return `nothing`."""
+function format_result_latex(value, runtime::Module)
     io = IOBuffer()
     context = IOContext(io, :color => false, :limit => true, :module => runtime)
     try
@@ -156,19 +156,30 @@ function format_result_latex_source(value, runtime::Module)
 
     latex_source = String(take!(io))
     normalized = normalize_latex_result_source(latex_source)
-    return isempty(normalized) ? nothing : normalized
+    isempty(normalized) && return nothing
+    stripped = strip(latex_source)
+    is_math = length(stripped) >= 2 && startswith(stripped, "\$") &&
+        endswith(stripped, "\$")
+    return (source=normalized, is_math=is_math)
+end
+
+"""Render a result value using `text/latex` MIME when supported, else return `nothing`."""
+function format_result_latex_source(value, runtime::Module)
+    formatted = format_result_latex(value, runtime)
+    return formatted === nothing ? nothing : formatted.source
 end
 
 """Append one eval-result output using LaTeX rendering when available."""
 function append_eval_result_output!(session::ScratchpadSession, result)
     plain_text = format_result_value(result, session.runtime)
-    latex_source = format_result_latex_source(result, session.runtime)
-    if latex_source === nothing
+    formatted = format_result_latex(result, session.runtime)
+    if formatted === nothing
         append_output_line!(session, plain_text)
         return
     end
 
-    append_latex_result_line!(session, latex_source, plain_text)
+    append_latex_result_line!(
+        session, formatted.source, plain_text, formatted.is_math)
 end
 
 """Truncate UTF-8 text to a byte budget and append an explicit marker."""
@@ -507,8 +518,36 @@ function dynview_emit_latex_result_line!(
     return true
 end
 
+"""Return the most recent LaTeX result, if the output ends with one."""
+function latest_latex_output(session::ScratchpadSession)
+    isempty(session.output_entries) && return nothing
+    entry = last(session.output_entries)
+    isempty(entry.latex_source) && return nothing
+    return entry
+end
+
+"""Return whether one LaTeX result should replace history as a semantic document."""
+function latex_output_is_document(entry::ScratchpadOutputEntry)
+    return !entry.latex_is_math && OdinJuliaBridge.dynview_tex_source_mode(
+        entry.latex_source) == OdinJuliaBridge.DYNVIEW_TEX_MODE_DOCUMENT
+end
+
+"""Replace Scratchpad history with its latest native semantic document when eligible."""
+function emit_latest_document!(state_ptr::Ptr{Cvoid}, session::ScratchpadSession)
+    entry = latest_latex_output(session)
+    entry === nothing && return nothing
+    latex_output_is_document(entry) || return nothing
+    is_bridge_status_ok(OdinJuliaBridge.dynview_reset_stream(state_ptr)) || return false
+    status = OdinJuliaBridge.dynview_tex_document(
+        state_ptr, entry.latex_source, entry.line,
+        entry.block_kind, Int32(1), entry.style_id)
+    return is_bridge_status_ok(status)
+end
+
 """Emit current scratchpad output as a dynview command stream for host-side rendering."""
 function emit_dynview_output_stream!(state_ptr::Ptr{Cvoid}, session::ScratchpadSession)
+    document_status = emit_latest_document!(state_ptr, session)
+    document_status === nothing || return document_status
     if !is_bridge_status_ok(OdinJuliaBridge.dynview_reset_stream(state_ptr)) ||
         isempty(session.output_entries)
         return isempty(session.output_entries)

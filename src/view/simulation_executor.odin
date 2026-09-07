@@ -31,6 +31,13 @@ create_simulation_executor :: proc(
     executor^.shape_cache_task.state = state
     executor^.dynview_task.state = state
     executor^.dynview_task.math_shaping_workspace = &executor^.math_shaping_workspace
+    executor^.prose_shaping_workspace = new(core.Document_Prose_Shaping_Workspace)
+    if executor^.prose_shaping_workspace == nil {
+        free(executor)
+        core.arena_owner_destroy(&state^.dynview.cache_arena)
+        return nil
+    }
+    executor^.dynview_task.prose_shaping_workspace = executor^.prose_shaping_workspace
     evidence_trace.ring_init(
         &executor^.particle_task.evidence_ring, .Particle_Worker)
     evidence_trace.ring_init(
@@ -40,6 +47,7 @@ create_simulation_executor :: proc(
     evidence_trace.ring_init(
         &executor^.dynview_task.evidence_ring, .Dynview_Worker)
     if !taskpool.task_pool_init(&executor^.pool) {
+        free(executor^.prose_shaping_workspace)
         free(executor)
         core.arena_owner_destroy(&state^.dynview.cache_arena)
         return nil
@@ -60,6 +68,7 @@ destroy_simulation_executor :: proc(executor: ^Simulation_Executor) {
         core.arena_owner_destroy(
             &runtime^.cache_arena)
     }
+    free(executor^.prose_shaping_workspace)
     free(executor)
 }
 
@@ -132,7 +141,8 @@ compile_dynview_task :: proc(
     runtime^.cache_access_state = .Worker_Mutable
     runtime^.cache_worker_thread_id = os.get_current_thread_id()
     dyncompile.compile_if_needed(
-        runtime, &runtime^.cache_arena, math_shaping_service(data))
+        runtime, &runtime^.cache_arena, math_shaping_service(data),
+        prose_shaping_service(data))
     runtime^.cache_access_state = .Display_Readable
     _ = evidence_session.session_record(
         &data^.state^.evidence_session, &data^.evidence_ring, {
@@ -170,6 +180,53 @@ math_shaping_service :: proc(
         projection_workspace = workspace^.projection[:],
         glyph_workspace = workspace^.glyphs[:],
     }
+}
+
+// Borrow exact effective JuliaMono identities and task-owned prose workspace.
+prose_shaping_service :: proc(
+    data: ^Frame_Preparation_Task_Data) -> dyncompile.Document_Prose_Shaping_Service {
+
+    workspace := data^.prose_shaping_workspace
+    if workspace == nil {
+        return {}
+    }
+    result := dyncompile.Document_Prose_Shaping_Service{
+        user_data = &data^.state^.font_cache,
+        base_pixel_size = f32(font.JULIA_MONO_FONT_SIZE),
+        shape = prose_shape_run,
+        glyph_extents = prose_shape_glyph_extents,
+        glyph_workspace = workspace^.glyphs[:],
+    }
+    for key_index in 0..<dyncompile.DOCUMENT_PROSE_FONT_COUNT {
+        requested_key := core.Font_Key(key_index)
+        identity, ready :=
+            font.cache_shaping_identity(&data^.state^.font_cache, requested_key)
+        if !ready {
+            return {}
+        }
+        result.fonts[key_index] = {
+            identity.key, identity.generation, identity.raster_ascent}
+    }
+    return result
+}
+
+// Shape one prose run through the exact face identity captured for this rebuild.
+prose_shape_run :: proc(
+    user_data: rawptr,
+    request: dyncompile.Document_Prose_Shape_Request) -> (int, bool) {
+
+    return font.cache_shape_generation(
+        cast(^core.Font_Cache)user_data, request.key, request.generation,
+        request.text, request.output)
+}
+
+// Query exact-generation JuliaMono ink extents for one shaped glyph.
+prose_shape_glyph_extents :: proc(
+    user_data: rawptr, key: core.Font_Key,
+    generation: u64, glyph_id: u32) -> (core.Font_Glyph_Extents, bool) {
+
+    return font.cache_glyph_extents_generation(
+        cast(^core.Font_Cache)user_data, key, generation, glyph_id)
 }
 
 //   Query one bounded corner table through the generation-checked capability.

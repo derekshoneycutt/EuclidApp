@@ -248,10 +248,10 @@ bound entry directly. Keep `get_view_text` named even though view updates are pu
 Animation view text has two coordinated outputs:
 
 - A complete plain fallback string returned by `get_view_text(state_ptr)`.
-- An optional structured Dynview stream containing styled prose, math, and
+- An optional native semantic document containing styled prose, math, and
   embedded explanatory shapes.
 
-The host uses structured output only when the complete stream is valid. A
+The host uses the semantic document only when the complete transaction is valid. A
 parse, bridge, capacity, compile, or layout failure falls back to the returned
 plain string. Structured output is therefore an enhancement, never the only
 source of meaning.
@@ -261,7 +261,7 @@ flowchart TD
   A[Author structured source and complete fallback]
   B[emit_latex_view_text!]
   C[Plain fallback and copy payload]
-  D[Structured Dynview stream]
+  D[Native semantic document]
   E{Parse, bridge, compile, and layout valid?}
   F[Render structured text]
   G[Render complete fallback]
@@ -283,6 +283,10 @@ Use `EuclidLatex.emit_latex_view_text!` for complete animation view text. It:
 - installs the supplied fallback as the copy payload;
 - returns the same fallback expected by `get_view_text`;
 - preserves fallback safely when parsing, storage, staging, or publication fails.
+
+Complete documents compile directly into measured semantic layout; they do not
+produce command-layout rows. Standalone math and explicitly authored low-level
+Dynview streams remain available for their separate use cases.
 
 ```julia
 const DefinitionLatexDocument = raw"""\textbf{Definition 1.}
@@ -342,6 +346,10 @@ Consult [LaTeXSupport.md](LaTeXSupport.md) for the exact supported grammar.
 - Let Dynview wrap ordinary text; do not insert source newlines to control line
   width. A single document-source newline normalizes to a space.
 - Use a blank source line for a semantic paragraph break.
+- Use one `\\` only for an intentional forced line inside a paragraph, such as a
+  compact list or aligned pair of claims. Do not repeat forced breaks to make paragraphs.
+- Do not surround display math with blank lines solely to create vertical padding;
+  display blocks own their spacing.
 - Avoid repeating the entire construction in prose while the animation already
   communicates it visually. Text should state the idea, relation, or conclusion.
 
@@ -403,7 +411,8 @@ complete and readable when structured output is unavailable.
 
 `emit_latex_view_text!` uses the supplied fallback as the copy payload. Copying
 structured text should therefore yield coherent plain content rather than a
-sequence of visual implementation fragments.
+sequence of visual implementation fragments. The copy icon follows the sealed
+semantic document bounds used for drawing and scrolling.
 
 Document mode fails closed. Unsupported commands, malformed style groups,
 unclosed math delimiters, empty math fragments, or invalid shape options abort

@@ -144,6 +144,24 @@ sync_window_math_shaping :: proc(state: ^Euclid_General_State) {
     dynview.invalidate(&state^.dynview, dynview.DYNVIEW_INVALIDATE_FONT)
 }
 
+// Track effective JuliaMono face generations after display-thread publication.
+sync_window_prose_shaping :: proc(state: ^Euclid_General_State) {
+    count := int(font.Font_Key.Math_Regular)
+    effective_keys: [int(font.Font_Key.Math_Regular)]core.Font_Key
+    generations: [int(font.Font_Key.Math_Regular)]u64
+    for key_index in 0..<count {
+        identity, ready := font.cache_shaping_identity(
+            &state^.font_cache, font.Font_Key(key_index))
+        if !ready {
+            return
+        }
+        effective_keys[key_index] = identity.key
+        generations[key_index] = identity.generation
+    }
+    dynview.track_prose_fonts(
+        &state^.dynview, effective_keys[:], generations[:])
+}
+
 //   Run one window frame: async results, simulation update, draw, and GIF capture.
 run_window_frame :: proc(
     state: ^Euclid_General_State,
@@ -154,6 +172,7 @@ run_window_frame :: proc(
     font.cache_service(
         &state^.font_cache, &state^.simulation_executor^.pool)
     sync_window_math_shaping(state)
+    sync_window_prose_shaping(state)
     ui.apply_scratchpad_async_results(state, &state^.ui_runtime)
     julia.publish_available_view_snapshot(state)
     alpha := accumulate_and_update_systems(state)

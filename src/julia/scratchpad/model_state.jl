@@ -35,6 +35,7 @@ struct ScratchpadOutputEntry
     block_kind::Int32
     style_id::Int32
     latex_source::String
+    latex_is_math::Bool
     segments::Vector{ScratchpadOutputSegment}
 end
 
@@ -56,7 +57,18 @@ function ScratchpadOutputEntry(
     latex_source::String)
 
     ScratchpadOutputEntry(
-        line, block_kind, style_id, latex_source, ScratchpadOutputSegment[])
+        line, block_kind, style_id, latex_source, false, ScratchpadOutputSegment[])
+end
+
+"""Construct an output entry with segments and no explicit LaTeX math mode."""
+function ScratchpadOutputEntry(
+    line::String,
+    block_kind::Int32,
+    style_id::Int32,
+    latex_source::String,
+    segments::Vector{ScratchpadOutputSegment})
+
+    ScratchpadOutputEntry(line, block_kind, style_id, latex_source, false, segments)
 end
 
 mutable struct ScratchpadSession
@@ -541,18 +553,22 @@ function append_segmented_output_line!(
         OdinJuliaBridge.BRIDGE_DYNVIEW_BLOCK_OUTPUT,
         DynviewStyleOutput,
         "",
+        false,
         segments))
 end
 
 """Append one eval-result output line that should render as inline formatted LaTeX."""
 function append_latex_result_line!(
-    session::ScratchpadSession, latex_source::AbstractString, plain_text::AbstractString)
+    session::ScratchpadSession, latex_source::AbstractString, plain_text::AbstractString,
+    latex_is_math::Bool=false)
     line = String(plain_text)
     append_output_entry!(session, ScratchpadOutputEntry(
         line,
         OdinJuliaBridge.BRIDGE_DYNVIEW_BLOCK_OUTPUT,
         DynviewStyleOutput,
-        String(latex_source)))
+        String(latex_source),
+        latex_is_math,
+        ScratchpadOutputSegment[]))
 end
 
 """Apply REPL softscope transformation to parsed expressions when available."""

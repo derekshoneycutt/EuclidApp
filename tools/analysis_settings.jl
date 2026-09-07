@@ -440,6 +440,17 @@ AnalysisSettings(
                 certainty=:definite,
                 response=Ignore),
             ReviewedAllocationPolicy(
+                "test-dynview-document-shape-geometry-cache",
+                "src/dynview/layout/document_build_test.odin",
+                "document_shape_geometry_preserves_authored_units",
+                :context,
+                "Large shape-geometry test fixture is released by defer in the test body.";
+                operation="new",
+                target="app_core.Dynview_Compile_Cache",
+                allocator_source="context.allocator",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
                 "test-dynview-core-buffer-views",
                 "src/dynview/core/buffers_test.odin",
                 "command_buffer_views_prefer_published_content",
@@ -570,6 +581,53 @@ AnalysisSettings(
                 response=Ignore,
                 minimum_matches=4,
                 maximum_matches=4),
+            ReviewedAllocationPolicy(
+                "test-view-snapshot-document-overflow-payloads",
+                "src/bridge/view_snapshot_arena_test.odin",
+                "view_snapshot_document_transfer_rejects_overflow",
+                :implicit,
+                "Five overflow document buffers are released by deferred deletes.";
+                operation="make",
+                certainty=:definite,
+                response=Ignore,
+                minimum_matches=5,
+                maximum_matches=5),
+            ReviewedAllocationPolicy(
+                "test-session-disabled-policy-state",
+                "src/evidence/session/session_test.odin",
+                "session_test_disabled_policy_is_inert",
+                :implicit,
+                "The large test session is heap-backed and released by deferred free.";
+                operation="new",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
+                "test-session-enabled-policy-state",
+                "src/evidence/session/session_test.odin",
+                "session_test_enabled_policy_copies_configuration",
+                :implicit,
+                "The large test session is heap-backed and released by deferred free.";
+                operation="new",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
+                "test-session-required-loss-state",
+                "src/evidence/session/session_test.odin",
+                "session_test_required_loss_is_sticky",
+                :implicit,
+                "The large test session is heap-backed and released by deferred free.";
+                operation="new",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
+                "test-session-optional-pressure-state",
+                "src/evidence/session/session_test.odin",
+                "session_test_optional_pressure_preserves_required_reserve",
+                :implicit,
+                "The large test session is heap-backed and released by deferred free.";
+                operation="new",
+                certainty=:definite,
+                response=Ignore),
             ReviewedAllocationPolicy(
                 "test-view-snapshot-reload-state",
                 "src/bridge/view_snapshot_arena_test.odin",
@@ -792,6 +850,16 @@ AnalysisSettings(
                 "Created once at startup with a definitive destruction at application end.";
                 operation="new",
                 target="Simulation_Executor",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
+                "view-prose-shaping-workspace",
+                "src/view/simulation_executor.odin",
+                "create_simulation_executor",
+                :implicit,
+                "Bounded workspace created with the executor and released after its worker pool joins.";
+                operation="new",
+                target="core.Document_Prose_Shaping_Workspace",
                 certainty=:definite,
                 response=Ignore),
             ReviewedAllocationPolicy(
@@ -1734,6 +1802,36 @@ AnalysisSettings(
                 "The test service is released by its deferred free.";
                 operation="new",
                 target="app_bridge.Julia_Runtime_Service",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
+                "test-dynview-semantic-rollback-state",
+                "src/view/dynview_test.odin",
+                "scratchpad_semantic_rollback_preserves_published_fallback",
+                :implicit,
+                "The test host state is released by its deferred free.";
+                operation="new",
+                target="app_core.Euclid_General_State",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
+                "test-dynview-semantic-rollback-service",
+                "src/view/dynview_test.odin",
+                "scratchpad_semantic_rollback_preserves_published_fallback",
+                :implicit,
+                "The test service is released by its deferred free.";
+                operation="new",
+                target="app_bridge.Julia_Runtime_Service",
+                certainty=:definite,
+                response=Ignore),
+            ReviewedAllocationPolicy(
+                "test-dynview-semantic-rollback-animation",
+                "src/view/dynview_test.odin",
+                "scratchpad_semantic_rollback_preserves_published_fallback",
+                :implicit,
+                "The test animation is released by its deferred free.";
+                operation="new",
+                target="app_core.Euclid_Julia_Animation_Interface",
                 certainty=:definite,
                 response=Ignore),
             ReviewedAllocationPolicy(

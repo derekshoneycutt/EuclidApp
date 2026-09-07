@@ -10,7 +10,6 @@
 {"wait_state":"runtime_ready","timeout_ms":10000}
 {"do":"pause_simulation"}
 {"wait_state":"simulation_paused","timeout_ms":10000}
-{"wait_event":"dynview_published","timeout_ms":10000}
 {"wait_event":"frame_presented","timeout_ms":10000}
 {"screenshot":".build/phase14-groups-reloaded.png"}
 {"wait_event":"capture_completed","timeout_ms":10000}
